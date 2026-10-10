@@ -19,13 +19,15 @@ CREATE TABLE IF NOT EXISTS admin(id INTEGER PRIMARY KEY, email TEXT UNIQUE, salt
 CREATE TABLE IF NOT EXISTS sessions(token TEXT PRIMARY KEY, expires INTEGER);
 CREATE TABLE IF NOT EXISTS settings(k TEXT PRIMARY KEY, v TEXT);
 CREATE TABLE IF NOT EXISTS posts(id INTEGER PRIMARY KEY, caption TEXT DEFAULT '', published INTEGER DEFAULT 0, locked INTEGER DEFAULT 1, created INTEGER, updated INTEGER);
-CREATE TABLE IF NOT EXISTS media(id INTEGER PRIMARY KEY, post_id INTEGER REFERENCES posts(id) ON DELETE CASCADE, kind TEXT, file TEXT UNIQUE, mime TEXT, size INTEGER, pos INTEGER DEFAULT 0);`);
+CREATE TABLE IF NOT EXISTS media(id INTEGER PRIMARY KEY, post_id INTEGER REFERENCES posts(id) ON DELETE CASCADE, kind TEXT, file TEXT UNIQUE, mime TEXT, size INTEGER, pos INTEGER DEFAULT 0);
+CREATE TABLE IF NOT EXISTS pix_transactions(identifier TEXT PRIMARY KEY, transaction_id TEXT, amount REAL NOT NULL, status TEXT NOT NULL, client_email TEXT, pix_code TEXT, pix_image TEXT, webhook_token TEXT, created INTEGER NOT NULL, updated INTEGER NOT NULL);
+CREATE TABLE IF NOT EXISTS webhook_events(event_key TEXT PRIMARY KEY, event TEXT NOT NULL, received INTEGER NOT NULL);`);
 
-// ---------- autenticação ----------
+// ---------- autenticaÃ§Ã£o ----------
 const hashPw = (p, s) => crypto.scryptSync(p, s, 64).toString('hex');
 if (!db.prepare('SELECT 1 FROM admin').get()) {
   const { ADMIN_EMAIL: e, ADMIN_PASSWORD: p } = process.env;
-  if (!e || !p || p.length < 12) { console.error('Defina ADMIN_EMAIL e ADMIN_PASSWORD (mínimo 12 caracteres) no primeiro início.'); process.exit(1); }
+  if (!e || !p || p.length < 12) { console.error('Defina ADMIN_EMAIL e ADMIN_PASSWORD (mÃ­nimo 12 caracteres) no primeiro inÃ­cio.'); process.exit(1); }
   const s = crypto.randomBytes(16).toString('hex');
   db.prepare('INSERT INTO admin(email,salt,hash) VALUES(?,?,?)').run(e.toLowerCase(), s, hashPw(p, s));
 }
@@ -36,7 +38,7 @@ const isAdmin = req => {
   const r = db.prepare('SELECT expires FROM sessions WHERE token=?').get(sha(t));
   return !!r && r.expires > Date.now();
 };
-const guard = (req, res, next) => isAdmin(req) ? next() : res.status(401).json({ error: 'Não autenticado.' });
+const guard = (req, res, next) => isAdmin(req) ? next() : res.status(401).json({ error: 'NÃ£o autenticado.' });
 
 // ---------- perfil ----------
 const DEF = { name: 'Seu nome', handle: '@seuperfil', bio: '', price1: 53.48, price3: 136.36, price6: 224.6, avatar: '', cover: '' };
@@ -64,7 +66,7 @@ function store(files = [], only) {
   try {
     for (const f of files) {
       const d = detect(f.path);
-      if (!d || (only && d[0] !== only)) throw new Error(`Formato não suportado: ${f.originalname}. Use JPG, PNG, WEBP, GIF, MP4, MOV ou WEBM.`);
+      if (!d || (only && d[0] !== only)) throw new Error(`Formato nÃ£o suportado: ${f.originalname}. Use JPG, PNG, WEBP, GIF, MP4, MOV ou WEBM.`);
       out.push({ kind: d[0], mime: d[2], size: f.size, file: crypto.randomUUID() + '.' + d[1], tmp: f.path });
     }
   } catch (e) { files.forEach(f => fs.rmSync(f.path, { force: true })); throw e; }
@@ -89,6 +91,33 @@ const addMedia = (postId, files) => {
 };
 const flag = v => (v === '1' || v === 'true' || v === 1 || v === true) ? 1 : 0;
 
+// ---------- gateways / OmegaPayments ----------
+// Credenciais sÃ£o criptografadas em repouso com uma chave derivada do segredo de inicializaÃ§Ã£o.
+// Em produÃ§Ã£o, defina ADMIN_PASSWORD estÃ¡vel e mantenha-o fora do cÃ³digo-fonte.
+const gatewayCipherKey = crypto.scryptSync(process.env.ADMIN_PASSWORD || 'missing-admin-password', 'site-gateway-config-v1', 32);
+function encryptSecret(value) {
+  if (!value) return '';
+  const iv = crypto.randomBytes(12), cipher = crypto.createCipheriv('aes-256-gcm', gatewayCipherKey, iv);
+  const data = Buffer.concat([cipher.update(String(value), 'utf8'), cipher.final()]);
+  return Buffer.concat([iv, cipher.getAuthTag(), data]).toString('base64');
+}
+function decryptSecret(value) {
+  if (!value) return '';
+  try { const b = Buffer.from(value, 'base64'), iv=b.subarray(0,12), tag=b.subarray(12,28), data=b.subarray(28);
+    const d=crypto.createDecipheriv('aes-256-gcm', gatewayCipherKey, iv); d.setAuthTag(tag);
+    return Buffer.concat([d.update(data),d.final()]).toString('utf8');
+  } catch { return ''; }
+}
+const getGatewayConfig = () => {
+  const raw = db.prepare("SELECT v FROM settings WHERE k='gateways' ").get()?.v;
+  let cfg={}; try { cfg=JSON.parse(raw||'{}'); } catch {}
+  return { omega: { enabled: !!cfg.omega?.enabled, publicKey: decryptSecret(cfg.omega?.publicKeyEnc), secretKey: decryptSecret(cfg.omega?.secretKeyEnc), webhookToken: decryptSecret(cfg.omega?.webhookTokenEnc) } };
+};
+function saveGatewayConfig(cfg) {
+  db.prepare("INSERT INTO settings(k,v) VALUES('gateways',?) ON CONFLICT(k) DO UPDATE SET v=excluded.v").run(JSON.stringify({omega:{enabled:!!cfg.omega.enabled, publicKeyEnc:encryptSecret(cfg.omega.publicKey), secretKeyEnc:encryptSecret(cfg.omega.secretKey), webhookTokenEnc:encryptSecret(cfg.omega.webhookToken)}}));
+}
+const publicGatewayState = () => { const c=getGatewayConfig().omega; return {omega:{enabled:c.enabled,configured:!!(c.publicKey&&c.secretKey),name:'OmegaPayments'}}; };
+
 // ---------- app ----------
 const app = express();
 app.disable('x-powered-by');
@@ -101,8 +130,8 @@ app.use((req, res, next) => {
   next();
 });
 app.use(express.json({ limit: '100kb' }));
-// CSRF: cabeçalho customizado obrigatório em toda escrita (sem CORS, navegadores não o enviam de outros sites) + SameSite=Strict
-app.use('/api/admin', (req, res, next) => (req.method === 'GET' || req.headers['x-csrf'] === '1') ? next() : res.status(403).json({ error: 'Requisição inválida.' }));
+// CSRF: cabeÃ§alho customizado obrigatÃ³rio em toda escrita (sem CORS, navegadores nÃ£o o enviam de outros sites) + SameSite=Strict
+app.use('/api/admin', (req, res, next) => (req.method === 'GET' || req.headers['x-csrf'] === '1') ? next() : res.status(403).json({ error: 'RequisiÃ§Ã£o invÃ¡lida.' }));
 
 const tries = new Map();
 app.post('/api/admin/login', (req, res) => {
@@ -126,13 +155,72 @@ app.post('/api/admin/logout', (req, res) => {
   res.set('Set-Cookie', 'sid=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0'); res.json({ ok: 1 });
 });
 app.get('/api/admin/me', guard, (req, res) => res.json({ ok: 1 }));
+app.get('/api/admin/gateways', guard, (req,res) => {
+  const c=getGatewayConfig().omega;
+  res.json({omega:{enabled:c.enabled,publicKey:c.publicKey,secretKeyConfigured:!!c.secretKey,webhookTokenConfigured:!!c.webhookToken,configured:!!(c.publicKey&&c.secretKey)}});
+});
+app.put('/api/admin/gateways', guard, (req,res) => {
+  const body=req.body||{}, old=getGatewayConfig().omega;
+  const publicKey=String(body.publicKey??old.publicKey).trim();
+  const secretKey=String(body.secretKey||old.secretKey).trim();
+  const webhookToken=String(body.webhookToken||old.webhookToken).trim();
+  if (publicKey.length>500 || secretKey.length>1000 || webhookToken.length>500) return res.status(400).json({error:'Credenciais invÃ¡lidas.'});
+  if (body.enabled && (!publicKey || !secretKey || !webhookToken)) return res.status(400).json({error:'Para ativar, informe chave pÃºblica, chave secreta e token de webhook.'});
+  saveGatewayConfig({omega:{enabled:body.enabled===undefined?old.enabled:!!body.enabled,publicKey,secretKey,webhookToken}});
+  res.json({ok:true,...publicGatewayState()});
+});
+// Checkout Pix: endpoint pÃºblico limitado a dados mÃ­nimos; preÃ§o precisa vir do catÃ¡logo do prÃ³prio site.
+app.post('/api/pix/create', async (req,res) => {
+  const cfg=getGatewayConfig().omega;
+  if(!cfg.enabled || !cfg.publicKey || !cfg.secretKey || !cfg.webhookToken) return res.status(503).json({error:'Pagamento Pix temporariamente indisponÃ­vel.'});
+  const {name,email,phone='',document='',plan='1'}=req.body||{};
+  if(typeof name!=='string'||name.trim().length<2||name.length>120||typeof email!=='string'||!/^\S+@\S+\.\S+$/.test(email)||email.length>180) return res.status(400).json({error:'Informe nome e e-mail vÃ¡lidos.'});
+  const profile=getProfile(), prices={'1':Number(profile.price1),'3':Number(profile.price3),'6':Number(profile.price6)};
+  const amount=prices[String(plan)];
+  if(!Number.isFinite(amount)||amount<0.01) return res.status(400).json({error:'Plano ou preÃ§o invÃ¡lido.'});
+  const identifier='site_'+crypto.randomUUID().replaceAll('-','');
+  const base=`${req.protocol}://${req.get('host')}`;
+  const callbackUrl=`${base}/api/webhooks/omegapay/${encodeURIComponent(identifier)}`;
+  const payload={identifier,amount,client:{name:name.trim(),email:email.trim(),...(phone?{phone:String(phone).slice(0,30)}:{}),...(document?{document:String(document).slice(0,30)}:{})},products:[{id:'subscription_'+plan,name:`Assinatura ${plan} ${plan==='1'?'mÃªs':'meses'}`,quantity:1,price:amount}],metadata:{provider:'site',orderId:identifier},callbackUrl};
+  try {
+    const r=await fetch('https://app.omegapayments.com.br/api/v1/gateway/pix/receive',{method:'POST',headers:{'content-type':'application/json','x-public-key':cfg.publicKey,'x-secret-key':cfg.secretKey},body:JSON.stringify(payload),signal:AbortSignal.timeout(20000)});
+    const data=await r.json().catch(()=>({}));
+    if(!r.ok||!data.pix?.code||!data.transactionId) return res.status(502).json({error:'A OmegaPayments nÃ£o conseguiu criar a cobranÃ§a. Confira a configuraÃ§Ã£o e tente novamente.'});
+    const now=Date.now();
+    db.prepare('INSERT INTO pix_transactions(identifier,transaction_id,amount,status,client_email,pix_code,pix_image,webhook_token,created,updated) VALUES(?,?,?,?,?,?,?,?,?,?)').run(identifier,String(data.transactionId),amount,String(data.transactionStatus||data.status||'PENDING'),email.trim(),String(data.pix.code),String(data.pix.image||''),String(data.webhookToken||cfg.webhookToken),now,now);
+    res.json({ok:true,identifier,transactionId:data.transactionId,amount,pix:{code:data.pix.code,image:data.pix.image||null,expiresAt:data.pix.expiresAt||null}});
+  } catch { res.status(502).json({error:'NÃ£o foi possÃ­vel conectar ao provedor de pagamentos.'}); }
+});
+
+app.post('/api/webhooks/omegapay/:identifier', (req,res) => {
+  const identifier=String(req.params.identifier||'');
+  const tx=db.prepare('SELECT * FROM pix_transactions WHERE identifier=?').get(identifier);
+  if(!tx) return res.sendStatus(404);
+  const body=req.body||{};
+  const supplied=String(body.token||'');
+  const expected=String(tx.webhook_token||'');
+  if(!expected||!supplied||Buffer.byteLength(supplied)!==Buffer.byteLength(expected)||!crypto.timingSafeEqual(Buffer.from(supplied),Buffer.from(expected)) || !String(body.event||'').startsWith('TRANSACTION_')) return res.sendStatus(401);
+  const eventKey=String(body.eventId||body.id||`${body.event}:${body.transaction?.id||body.transactionId||identifier}:${body.occurredAt||body.timestamp||''}`).slice(0,250);
+  if(db.prepare('SELECT 1 FROM webhook_events WHERE event_key=?').get(eventKey)) return res.json({ok:true,duplicate:true});
+  const event=String(body.event);
+  const statusMap={'TRANSACTION_PAID':'COMPLETED','TRANSACTION_CREATED':'PENDING','TRANSACTION_CANCELED':'CANCELED','TRANSACTION_REFUNDED':'REFUNDED','TRANSACTION_CHARGED_BACK':'CHARGED_BACK','TRANSACTION_FAILED':'FAILED'};
+  const status=statusMap[event];
+  if(!status) return res.sendStatus(400);
+  const now=Date.now();
+  const insert=db.prepare('INSERT INTO webhook_events(event_key,event,received) VALUES(?,?,?)');
+  const update=db.prepare('UPDATE pix_transactions SET status=?,updated=? WHERE identifier=?');
+  const txWork=db.transaction(()=>{insert.run(eventKey,event,now);update.run(status,now,identifier)});
+  txWork();
+  res.json({ok:true});
+});
+
 
 app.get('/api/admin/state', guard, (req, res) =>
   res.json({ profile: getProfile(), posts: db.prepare('SELECT * FROM posts ORDER BY created DESC').all().map(p => shape(p, true)) }));
 
 app.post('/api/admin/posts', guard, upload.array('files'), (req, res) => {
   const b = req.body || {}, pub = flag(b.published);
-  if (pub && !req.files?.length) { (req.files || []).forEach(f => fs.rmSync(f.path, { force: true })); throw new Error('Envie ao menos uma imagem ou vídeo para publicar.'); }
+  if (pub && !req.files?.length) { (req.files || []).forEach(f => fs.rmSync(f.path, { force: true })); throw new Error('Envie ao menos uma imagem ou vÃ­deo para publicar.'); }
   const now = Date.now();
   const id = db.prepare('INSERT INTO posts(caption,published,locked,created,updated) VALUES(?,?,?,?,?)')
     .run(String(b.caption || '').slice(0, 2000), pub, flag(b.locked ?? '1'), now, now).lastInsertRowid;
@@ -142,13 +230,13 @@ app.post('/api/admin/posts', guard, upload.array('files'), (req, res) => {
 
 app.put('/api/admin/posts/:id', guard, upload.array('files'), (req, res) => {
   const id = +req.params.id, p = db.prepare('SELECT * FROM posts WHERE id=?').get(id);
-  if (!p) { (req.files || []).forEach(f => fs.rmSync(f.path, { force: true })); return res.status(404).json({ error: 'Publicação não encontrada.' }); }
+  if (!p) { (req.files || []).forEach(f => fs.rmSync(f.path, { force: true })); return res.status(404).json({ error: 'PublicaÃ§Ã£o nÃ£o encontrada.' }); }
   const b = req.body || {};
   const remove = [].concat(b.remove || []).map(Number).filter(Boolean);
   const gone = remove.length ? db.prepare(`SELECT file FROM media WHERE post_id=? AND id IN (${remove.map(() => '?').join(',')})`).all(id, ...remove) : [];
   if (b.published !== undefined && flag(b.published)) {
     const left = mediaOf(id).length - gone.length + (req.files?.length || 0);
-    if (left < 1) { (req.files || []).forEach(f => fs.rmSync(f.path, { force: true })); throw new Error('Envie ao menos uma imagem ou vídeo para publicar.'); }
+    if (left < 1) { (req.files || []).forEach(f => fs.rmSync(f.path, { force: true })); throw new Error('Envie ao menos uma imagem ou vÃ­deo para publicar.'); }
   }
   addMedia(id, req.files);
   if (gone.length) { db.prepare(`DELETE FROM media WHERE post_id=? AND id IN (${remove.map(() => '?').join(',')})`).run(id, ...remove); gone.forEach(g => rm(g.file)); }
@@ -178,7 +266,7 @@ app.put('/api/admin/profile', guard, upload.fields([{ name: 'avatar', maxCount: 
   res.json(p);
 });
 
-// ---------- público ----------
+// ---------- pÃºblico ----------
 app.get('/api/public', (req, res) => {
   const p = getProfile();
   const posts = db.prepare('SELECT * FROM posts WHERE published=1 ORDER BY created DESC').all().map(x => shape(x, false));
