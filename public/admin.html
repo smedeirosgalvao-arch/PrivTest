@@ -31,6 +31,7 @@ textarea{min-height:80px;resize:vertical}
 .meds{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
 .med{position:relative;width:72px}.med .th{width:72px;height:72px}.med label{margin:4px 0 0;display:flex;gap:4px;align-items:center;font-size:12px}
 .err{color:var(--red);font-size:14px;min-height:20px;margin-top:8px}
+.gateway{display:flex;align-items:center;gap:12px;padding:14px 0;border-top:1px solid var(--line)}.gateway:first-of-type{border-top:0}.gwicon{width:42px;height:42px;border-radius:14px;background:var(--sand);display:grid;place-items:center;font-weight:600}.gwbody{flex:1;min-width:0}.gwname{font-weight:600}.gwsub{font-size:12px;color:var(--muted)}.switch{position:relative;width:48px;height:28px;display:inline-block;flex:none}.switch input{opacity:0;width:0;height:0}.slider{position:absolute;inset:0;border-radius:20px;background:#c94b4b;cursor:pointer;transition:.2s}.slider:before{content:"";position:absolute;width:20px;height:20px;left:4px;top:4px;background:white;border-radius:50%;transition:.2s}.switch input:checked+.slider{background:#23934a}.switch input:checked+.slider:before{transform:translateX(20px)}.gear{border:1px solid var(--line);border-radius:50%;width:38px;height:38px;background:white;font-size:18px;cursor:pointer}.modal{position:fixed;inset:0;background:#17171780;display:grid;place-items:center;padding:16px;z-index:10}.modalbox{background:white;border-radius:24px;padding:20px;width:min(100%,520px);max-height:90vh;overflow:auto}.status{font-size:12px;margin-top:5px}.status.good{color:#1e6b34}.status.bad{color:var(--red)}
 progress{width:100%;height:8px;accent-color:var(--orange);margin-top:10px}
 [hidden]{display:none!important}
 button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px solid var(--orange);outline-offset:2px}
@@ -62,6 +63,19 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px soli
   </form>
  </section>
 
+ <section class="card"><h2>Gateways de Pagamento</h2><p class="stats">Gerencie os provedores usados para criar cobranças Pix.</p>
+  <div class="gateway"><div class="gwicon">Ω</div><div class="gwbody"><div class="gwname">OmegaPayments</div><div class="gwsub" id="omegaStatus">Verificando configuração…</div><div class="status" id="omegaConn"></div></div>
+   <label class="switch" aria-label="Ativar OmegaPayments"><input id="omegaEnabled" type="checkbox"><span class="slider"></span></label><button class="gear" id="omegaSettings" aria-label="Configurar OmegaPayments" title="Configurar">⚙</button>
+  </div><div class="err" id="gwerr" role="alert"></div>
+ </section>
+ <section class="card" id="omegaModal" hidden><h2>Configurar OmegaPayments</h2><p class="stats">As credenciais são armazenadas criptografadas no banco de dados do site. Não compartilhe suas chaves.</p>
+  <form id="gwform"><label for="omegaPublic">Chave pública</label><input id="omegaPublic" type="text" autocomplete="off" required>
+   <label for="omegaSecret">Chave secreta</label><input id="omegaSecret" type="password" autocomplete="new-password" placeholder="Deixe vazio para manter a chave salva">
+   <label for="omegaWebhook">Token de validação do webhook</label><input id="omegaWebhook" type="password" autocomplete="new-password" placeholder="Token exclusivo para os webhooks" required>
+   <div class="stats" id="omegaWebhookUrl"></div><div class="err" id="gwformerr" role="alert"></div>
+   <div class="row"><button class="btn" id="gwSave">Salvar configuração</button><button class="btn s" type="button" id="gwCancel">Cancelar</button></div>
+  </form>
+ </section>
  <section class="card"><h2>Publicações</h2><div id="list"></div></section>
 
  <section class="card">
@@ -140,6 +154,13 @@ $("#prf").onsubmit=async e=>{e.preventDefault();$("#rerr").textContent="";
  f.append("price1",$("#p1").value);f.append("price3",$("#p3").value);f.append("price6",$("#p6").value);
  if($("#av").files[0])f.append("avatar",$("#av").files[0]);if($("#cv").files[0])f.append("cover",$("#cv").files[0]);
  try{await send("PUT","/profile",f);$("#av").value="";$("#cv").value="";await load();$("#rerr").textContent="Perfil salvo."}catch(err){$("#rerr").textContent=err.message}};
+
+
+async function loadGateways(){try{const c=await send('GET','/gateways');$('#omegaEnabled').checked=!!c.omega.enabled;$('#omegaPublic').value=c.omega.publicKey||'';$('#omegaSecret').value='';$('#omegaWebhook').value='';$('#omegaStatus').textContent=c.omega.configured?'Credenciais configuradas':'Precisa configurar as credenciais';$('#omegaConn').textContent=c.omega.enabled?'Gateway ativado':'Gateway desativado';$('#omegaConn').className='status '+(c.omega.enabled?'good':'bad');$('#omegaWebhookUrl').textContent='Webhook: '+location.origin+'/api/webhooks/omegapay/{identifier}';}catch(e){$('#gwerr').textContent=e.message}}
+$('#omegaSettings').onclick=()=>{$('#gwformerr').textContent='';$('#omegaModal').hidden=false;loadGateways()};
+$('#gwCancel').onclick=()=>{$('#omegaModal').hidden=true};
+$('#omegaEnabled').onchange=async()=>{try{await send('PUT','/gateways',{enabled:$('#omegaEnabled').checked});await loadGateways()}catch(e){$('#gwerr').textContent=e.message;$('#omegaEnabled').checked=!$('#omegaEnabled').checked}};
+$('#gwform').onsubmit=async e=>{e.preventDefault();$('#gwformerr').textContent='';$('#gwSave').disabled=true;try{await send('PUT','/gateways',{publicKey:$('#omegaPublic').value,secretKey:$('#omegaSecret').value,webhookToken:$('#omegaWebhook').value});$('#omegaModal').hidden=true;await loadGateways()}catch(err){$('#gwformerr').textContent=err.message}finally{$('#gwSave').disabled=false}};
 
 load();
 </script></body></html>
