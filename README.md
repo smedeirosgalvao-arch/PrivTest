@@ -1,4 +1,4 @@
-# Site de perfil com painel /admin
+# Site de perfil bcom painel /admin
 
 ## Rodar localmente
     npm install
