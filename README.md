@@ -13,3 +13,6 @@ Tudo que importa fica em DATA_DIR: `site.db` (banco) e `uploads/` (imagens e ví
 
 ## Variáveis
 DATA_DIR, PORT, MAX_UPLOAD_MB (padrão 300), TRUST_PROXY=1 atrás de proxy, NODE_ENV=production (cookie Secure).
+
+
+
