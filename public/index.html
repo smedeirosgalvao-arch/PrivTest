@@ -1,4 +1,4 @@
-DOCTYPE html>
+<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
@@ -116,11 +116,11 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--orange);outline-off
 <script>
 let demo={profile:{name:"",handle:"",bio:"",price1:0,price3:0,price6:0},counts:{posts:0,images:0,videos:0},posts:[]};
 const T={
- pt:{empty:"Nenhuma publicaÃ§Ã£o ainda.",sub:"Assinaturas",promo:"PromoÃ§Ãµes",m:["1 mÃªs","3 meses (15% off )","6 meses (30% off )"],more:"Ler mais",less:"Ler menos",posts:"Postagens",media:"MÃ­dias",loc:"Ler mais",demo:"DemonstraÃ§Ã£o: sem cobranÃ§a real",rep:"Denunciar",copy:"Copiar link",link:"Link de demonstraÃ§Ã£o"},
- es:{empty:"AÃºn no hay publicaciones.",sub:"Suscripciones",promo:"Promociones",m:["1 mes","3 meses (15% off )","6 meses (30% off )"],more:"Leer mÃ¡s",less:"Leer menos",posts:"Publicaciones",media:"Medios",demo:"DemostraciÃ³n: sin cobro real",rep:"Denunciar",copy:"Copiar enlace",link:"Enlace de demostraciÃ³n"},
+ pt:{empty:"Nenhuma publicação ainda.",sub:"Assinaturas",promo:"Promoções",m:["1 mês","3 meses (15% off )","6 meses (30% off )"],more:"Ler mais",less:"Ler menos",posts:"Postagens",media:"Mídias",loc:"Ler mais",demo:"Demonstração: sem cobrança real",rep:"Denunciar",copy:"Copiar link",link:"Link de demonstração"},
+ es:{empty:"Aún no hay publicaciones.",sub:"Suscripciones",promo:"Promociones",m:["1 mes","3 meses (15% off )","6 meses (30% off )"],more:"Leer más",less:"Leer menos",posts:"Publicaciones",media:"Medios",demo:"Demostración: sin cobro real",rep:"Denunciar",copy:"Copiar enlace",link:"Enlace de demostración"},
  en:{empty:"No posts yet.",sub:"Subscriptions",promo:"Promotions",m:["1 month","3 months (15% off )","6 months (30% off )"],more:"Read more",less:"Read less",posts:"Posts",media:"Media",demo:"Demo only: no real charge",rep:"Report",copy:"Copy link",link:"Demo link"}
 };
-const langs=[["pt","BR","PortuguÃªs"],["es","ES","EspaÃ±ol"],["en","EN","English"]];
+const langs=[["pt","BR","Português"],["es","ES","Español"],["en","EN","English"]];
 let lang="pt",tab=0,open=false;
 const $=s=>document.querySelector(s);
 const money=v=>"R$ "+v.toFixed(2).replace(".",",");
@@ -140,7 +140,7 @@ function render(){
  const t=T[lang];profileUI();
  document.documentElement.lang=lang==="pt"?"pt-BR":lang;
  const full=demo.profile.bio||"";
- $("#bio").textContent=bioOpen||full.length<=86?full:full.slice(0,86)+"â¦";$("#more").hidden=full.length<=86;
+ $("#bio").textContent=bioOpen||full.length<=86?full:full.slice(0,86)+"…";$("#more").hidden=full.length<=86;
  $("#more").textContent=bioOpen?t.less:t.more;
  $("#t-sub").textContent=t.sub;$("#t-promo").textContent=t.promo;
  [1,3,6].forEach((k,i)=>{$("#l"+k).textContent=t.m[i];$("#p"+k).textContent=money(demo.profile["price"+k])});
@@ -182,12 +182,12 @@ $("#tabs").onclick=e=>{const b=e.target.closest("[data-i]");if(!b)return;tab=+b.
  document.querySelectorAll("#tabs [role=tab]").forEach(x=>x.setAttribute("aria-selected",x===b));panel()};
 document.addEventListener("click",e=>{
  const s=e.target.closest(".sub");if(s){toast(T[lang].demo);return}
- const a=e.target.closest("[data-n]");if(a){e.preventDefault();toast(a.dataset.n+" Â· "+T[lang].link);return}
+ const a=e.target.closest("[data-n]");if(a){e.preventDefault();toast(a.dataset.n+" · "+T[lang].link);return}
  const d=e.target.closest(".dots");if(d){e.stopPropagation();const m=$("#pm"+d.dataset.pm);const was=m.classList.contains("open");document.querySelectorAll(".pm.open").forEach(x=>x.classList.remove("open"));m.classList.toggle("open",!was);return}
  const l=e.target.closest("[data-like]");if(l){l.classList.toggle("on");l.querySelector("path").setAttribute("fill",l.classList.contains("on")?"currentColor":"none");return}
  const x=e.target.closest("[data-a]");if(x){x.closest(".pm")?.classList.remove("open");toast(T[lang].demo)}
 });
-async function load(){try{const r=await fetch("/api/public");if(!r.ok)throw 0;demo=await r.json()}catch{toast("NÃ£o foi possÃ­vel carregar o perfil.")}render()}
+async function load(){try{const r=await fetch("/api/public");if(!r.ok)throw 0;demo=await r.json()}catch{toast("Não foi possível carregar o perfil.")}render()}
 load();
 </script>
 </body>
