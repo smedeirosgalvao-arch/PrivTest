@@ -3,7 +3,5 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm install --omit=dev
 COPY . .
-ENV NODE_ENV=production DATA_DIR=/data PORT=3000 TRUST_PROXY=1
-VOLUME /data
-EXPOSE 3000
+ENV NODE_ENV=production DATA_DIR=/data TRUST_PROXY=1
 CMD ["node","server.js"]
