@@ -247,6 +247,18 @@ app.post('/api/admin/logout', (req, res) => {
   res.set('Set-Cookie', 'sid=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0'); res.json({ ok: 1 });
 });
 app.get('/api/admin/me', guard, (req, res) => res.json({ ok: 1 }));
+
+// Configuração do checkout normal/automático, gerenciada pelo administrador.
+const getCheckoutConfig=()=>{let c={};try{c=JSON.parse(db.prepare("SELECT v FROM settings WHERE k='checkout'").get()?.v||'{}')}catch{};return {mode:c.mode==='automatic'?'automatic':'normal',name:String(c.name||''),email:String(c.email||''),phone:String(c.phone||''),document:String(c.document||'')};};
+app.get('/api/checkout-config',(req,res)=>{const c=getCheckoutConfig();res.set('Cache-Control','no-store');res.json({mode:c.mode});});
+app.get('/api/admin/checkout-config',guard,(req,res)=>res.json(getCheckoutConfig()));
+app.put('/api/admin/checkout-config',guard,(req,res)=>{
+ const b=req.body||{},mode=b.mode==='automatic'?'automatic':'normal';
+ const c={mode,name:String(b.name||'').trim().slice(0,120),email:String(b.email||'').trim().toLowerCase().slice(0,180),phone:String(b.phone||'').trim().slice(0,30),document:String(b.document||'').replace(/\\D/g,'').slice(0,20)};
+ if(mode==='automatic'&&(!c.name||!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(c.email)||!c.phone||!c.document))return res.status(400).json({error:'Preencha nome, e-mail, telefone e CPF/CNPJ para ativar o checkout automático.'});
+ db.prepare("INSERT INTO settings(k,v) VALUES('checkout',?) ON CONFLICT(k) DO UPDATE SET v=excluded.v").run(JSON.stringify(c));res.json({ok:true});
+});
+
 app.get('/api/admin/gateways', guard, (req,res) => {
   let c=getGatewayConfig().omega;
   if (!c.webhookToken) {
@@ -271,17 +283,19 @@ app.post('/api/pix/create', async (req,res) => {
   if(!cfg.enabled || !cfg.publicKey || !cfg.secretKey || !cfg.webhookToken) {
     return res.status(503).json({error:'Pagamento Pix temporariamente indisponível. Confira a configuração do gateway.'});
   }
-  const {name,email,password,passwordConfirm,phone='',document='',plan='1'}=req.body||{};
+  const checkout=getCheckoutConfig(), input=req.body||{};
+  const automatic=checkout.mode==='automatic';
+  const {password,passwordConfirm,plan='1'}=input;
+  const name=automatic?checkout.name:input.name, email=automatic?checkout.email:input.email, phone=automatic?checkout.phone:input.phone||'', document=automatic?checkout.document:input.document||'';
   const buyerName=typeof name==='string'?name.trim():'';
   const buyerEmail=typeof email==='string'?email.trim().toLowerCase():'';
   if(buyerName.length<2||buyerName.length>120||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(buyerEmail)||buyerEmail.length>180) {
     return res.status(400).json({error:'Informe nome e e-mail válidos.'});
   }
-  if(typeof password!=='string'||password.length<8||password.length>200) return res.status(400).json({error:'A senha deve ter entre 8 e 200 caracteres.'});
-  if(password!==passwordConfirm) return res.status(400).json({error:'As senhas não coincidem.'});
-  if(db.prepare('SELECT 1 FROM customer_accounts WHERE email=? COLLATE NOCASE').get(buyerEmail)) {
-    return res.status(409).json({error:'Este e-mail já possui uma conta. O login de clientes será disponibilizado na próxima etapa.'});
-  }
+  if(!automatic&& (typeof password!=='string'||password.length<8||password.length>200)) return res.status(400).json({error:'A senha deve ter entre 8 e 200 caracteres.'});
+  if(!automatic&&password!==passwordConfirm) return res.status(400).json({error:'As senhas não coincidem.'});
+  const existingAccount=db.prepare('SELECT 1 FROM customer_accounts WHERE email=? COLLATE NOCASE').get(buyerEmail);
+  if(existingAccount&&!automatic)return res.status(409).json({error:'Este e-mail já possui uma conta.'});
   const profile=getProfile(), prices={'1':Number(profile.price1),'3':Number(profile.price3),'6':Number(profile.price6)};
   const amount=prices[String(plan)];
   if(!Number.isFinite(amount)||amount<0.01) return res.status(400).json({error:'Plano ou preço inválido.'});
@@ -333,8 +347,11 @@ app.post('/api/pix/create', async (req,res) => {
       return res.status(502).json({error:r.status===401||r.status===403?'A OmegaPayments recusou as credenciais. Confira as chaves do gateway.':r.status===400?'A OmegaPayments rejeitou os dados da cobrança. Confira a configuração do gateway.':'A OmegaPayments não retornou o código Pix esperado. Confira as chaves e tente novamente.'});
     }
     const now=Date.now();
-    const salt=crypto.randomBytes(16).toString('hex');
-    db.prepare('INSERT INTO customer_accounts(email,name,salt,password_hash,created) VALUES(?,?,?,?,?)').run(buyerEmail,buyerName,salt,hashPw(password,salt),now);
+    if(!existingAccount){
+      const salt=crypto.randomBytes(16).toString('hex');
+      const accountPassword=automatic?crypto.randomBytes(32).toString('hex'):password;
+      db.prepare('INSERT INTO customer_accounts(email,name,salt,password_hash,created) VALUES(?,?,?,?,?)').run(buyerEmail,buyerName,salt,hashPw(accountPassword,salt),now);
+    }
      const memberToken=crypto.randomBytes(32).toString('hex');
      db.prepare('INSERT INTO customer_sessions(token,email,expires) VALUES(?,?,?)').run(sha(memberToken),buyerEmail,now+30*864e5);
      res.set('Set-Cookie',`member=${memberToken}; HttpOnly; SameSite=Strict; Path=/; Max-Age=2592000${PROD?'; Secure':''}`);
