@@ -595,7 +595,7 @@ progress{width:100%;height:6px;accent-color:var(--accent);margin-top:12px}
 
       <!-- ===== PAGAMENTOS ===== -->
       <section id="payments" data-panel hidden>
-        <div class="page-head"><div><p class="hint">Histórico de cobranças Pix, valores e situação das transações.</p></div><button class="btn ghost" id="paymentsRefresh" type="button">Atualizar</button></div>
+        <div class="page-head"><div><p class="hint">Histórico de cobranças Pix, valores e situação das transações.</p></div><div class="toolbar"><button class="btn danger" id="resetSales" type="button">Zerar histórico de vendas</button><button class="btn ghost" id="paymentsRefresh" type="button">Atualizar</button></div></div>
         <div class="kpis" style="margin-bottom:16px">
           <article class="kpi"><div class="kpi-top"><span>Pix gerados</span></div><strong id="payTotal">—</strong></article>
           <article class="kpi"><div class="kpi-top"><span>Pagos</span></div><strong id="payPaid">—</strong></article>
@@ -1455,7 +1455,8 @@ function drawPayments(){
 async function refreshPayments(reset=false){if(reset)paymentsOffset=0;$("#paymentsList").innerHTML='<p class="hint">Carregando transações…</p>';try{await loadPayments()}catch(e){paymentsError=e.message||"Erro ao carregar pagamentos."}drawPayments()}
 document.querySelectorAll("[data-pay-status]").forEach(b=>b.addEventListener("click",()=>{paymentsStatus=b.dataset.payStatus;refreshPayments(true)}));
 $("#paymentsList").addEventListener("click",async e=>{const b=e.target.closest("[data-confirm-test]");if(!b)return;const id=b.dataset.confirmTest;if(!confirm("SIMULAÇÃO DE TESTE: marcar este Pix como pago e ativar a assinatura sem receber dinheiro?"))return;b.disabled=true;b.textContent="Confirmando…";try{await send("POST","/payments/"+encodeURIComponent(id)+"/confirm-test",{});await refreshPayments(false);alert("Pagamento de teste confirmado e assinatura ativada.");}catch(err){alert(err.message||"Não foi possível confirmar o teste.");b.disabled=false;b.textContent="Confirmar teste";}});
- $("#paymentsRefresh").addEventListener("click",()=>refreshPayments(false));$("#paymentsSearch").addEventListener("input",drawPayments);
+ $("#resetSales").addEventListener("click",async()=>{if(!confirm("Isso apagará o histórico Pix, assinaturas, contas de clientes e estatísticas de visitas. Publicações, mídias, perfil, preços e gateway serão preservados. Deseja continuar?"))return;const b=$("#resetSales");b.disabled=true;b.textContent="Processando…";try{await send("POST","/reset-sales",{});paymentsOffset=0;await refreshPayments(true);await load();alert("Histórico de vendas limpo.");}catch(e){alert(e.message||"Não foi possível limpar o histórico.");}finally{b.disabled=false;b.textContent="Zerar histórico de vendas";}});
+$("#paymentsRefresh").addEventListener("click",()=>refreshPayments(false));$("#paymentsSearch").addEventListener("input",drawPayments);
 $("#paymentsPrev").addEventListener("click",()=>{paymentsOffset=Math.max(0,paymentsOffset-50);refreshPayments(false)});$("#paymentsNext").addEventListener("click",()=>{if(paymentsOffset+50<paymentsTotal){paymentsOffset+=50;refreshPayments(false)}});
 /* ---------- gateways ---------- */
 async function loadGateways(){
