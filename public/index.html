@@ -164,6 +164,7 @@ const T={
 };
 const langs=[["pt","BR","Português"],["es","ES","Español"],["en","EN","English"]];
 let lang="pt",tab=0,open=false,selectedPlan="1",selectedAmount=0;
+let pixPollTimer=null;
 const $=s=>document.querySelector(s);
 const money=v=>"R$ "+v.toFixed(2).replace(".",",");
 const fmtNum = n => n >= 1000 ? (n / 1000).toFixed(1).replace(/\.0$/, "") + "K" : String(n);
@@ -241,7 +242,7 @@ function openCheckout(button){
  $("#checkoutPlanText").textContent=`Plano de ${selectedPlan} ${selectedPlan==="1"?"mês":"meses"} · ${money(selectedAmount)}`;
  $("#checkoutError").textContent="";$("#checkoutForm").hidden=false;$("#pixResult").classList.remove("show");$("#checkoutOverlay").classList.add("open");$("#buyerName").focus();
 }
-function closeCheckout(){$("#checkoutOverlay").classList.remove("open")}
+function closeCheckout(){clearInterval(pixPollTimer);$("#checkoutOverlay").classList.remove("open")}
 $("#checkoutClose").onclick=closeCheckout;$("#checkoutCancel").onclick=closeCheckout;
 $("#checkoutOverlay").addEventListener("click",e=>{if(e.target===$("#checkoutOverlay"))closeCheckout()});
 document.addEventListener("keydown",e=>{if(e.key==="Escape")closeCheckout()});
@@ -253,6 +254,25 @@ $("#checkoutForm").addEventListener("submit",async e=>{
   $("#checkoutForm").hidden=true;$("#pixResult").classList.add("show");$("#pixCode").value=data.pix.code||"";
   const img=$("#pixImage"),qr=$("#pixQrFallback");qr.innerHTML="";qr.hidden=true;if(data.pix.image){img.src=data.pix.image;img.hidden=false}else{img.hidden=true;img.removeAttribute("src");if(data.pix.code){qr.hidden=false;if(window.QRCode){new QRCode(qr,{text:data.pix.code,width:220,height:220,colorDark:"#000000",colorLight:"#ffffff",correctLevel:QRCode.CorrectLevel.M});}else{const fallback=document.createElement("img");fallback.alt="QR Code Pix";fallback.width=220;fallback.height=220;fallback.style.cssText="display:block;width:220px;height:220px;object-fit:contain";fallback.onerror=()=>{if(fallback.dataset.retry!=="1"){fallback.dataset.retry="1";fallback.src="https://quickchart.io/qr?text="+encodeURIComponent(data.pix.code)+"&size=220";}else{qr.innerHTML="Não foi possível carregar a imagem do QR Code. Use o botão Copiar código Pix.";}};fallback.src="https://api.qrserver.com/v1/create-qr-code/?size=220x220&data="+encodeURIComponent(data.pix.code);qr.appendChild(fallback);}}}
   $("#pixStatus").textContent="Cobrança criada. Aguardando confirmação do provedor.";
+  clearInterval(pixPollTimer);
+  if(data.identifier){
+   const checkPixStatus=async()=>{
+    try{
+     const check=await fetch("/api/pix/status/"+encodeURIComponent(data.identifier),{cache:"no-store"});
+     if(!check.ok)return;
+     const state=await check.json();
+     if(state.active||state.status==="COMPLETED"){
+      $("#pixStatus").textContent="Pix confirmado! Sua assinatura foi ativada.";
+      clearInterval(pixPollTimer);
+     }else if(["CANCELED","REFUNDED","CHARGED_BACK","FAILED"].includes(state.status)){
+      $("#pixStatus").textContent="O pagamento está com status: "+state.status+". Se você já pagou, fale com o suporte.";
+      clearInterval(pixPollTimer);
+     }
+    }catch{}
+   };
+   await checkPixStatus();
+   pixPollTimer=setInterval(checkPixStatus,5000);
+  }
  }catch(err){error.textContent=err.message||"Erro ao conectar ao gateway."}finally{submit.disabled=false;submit.textContent="Gerar Pix"}
 });
 $("#copyPix").onclick=async()=>{try{await navigator.clipboard.writeText($("#pixCode").value);toast("Código Pix copiado!")}catch{$("#pixCode").select();document.execCommand("copy");toast("Código Pix copiado!")}};
