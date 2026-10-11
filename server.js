@@ -21,7 +21,8 @@ CREATE TABLE IF NOT EXISTS settings(k TEXT PRIMARY KEY, v TEXT);
 CREATE TABLE IF NOT EXISTS posts(id INTEGER PRIMARY KEY, caption TEXT DEFAULT '', published INTEGER DEFAULT 0, locked INTEGER DEFAULT 1, created INTEGER, updated INTEGER);
 CREATE TABLE IF NOT EXISTS media(id INTEGER PRIMARY KEY, post_id INTEGER REFERENCES posts(id) ON DELETE CASCADE, kind TEXT, file TEXT UNIQUE, mime TEXT, size INTEGER, pos INTEGER DEFAULT 0);
 CREATE TABLE IF NOT EXISTS pix_transactions(identifier TEXT PRIMARY KEY, transaction_id TEXT, amount REAL NOT NULL, status TEXT NOT NULL, client_email TEXT, pix_code TEXT, pix_image TEXT, webhook_token TEXT, created INTEGER NOT NULL, updated INTEGER NOT NULL);
-CREATE TABLE IF NOT EXISTS webhook_events(event_key TEXT PRIMARY KEY, event TEXT NOT NULL, received INTEGER NOT NULL);`);
+CREATE TABLE IF NOT EXISTS webhook_events(event_key TEXT PRIMARY KEY, event TEXT NOT NULL, received INTEGER NOT NULL);
+CREATE TABLE IF NOT EXISTS site_visits(id INTEGER PRIMARY KEY, visited_at INTEGER NOT NULL);`);
 
 // ---------- autenticaÃ§Ã£o ----------
 const hashPw = (p, s) => crypto.scryptSync(p, s, 64).toString('hex');
@@ -218,6 +219,13 @@ app.post('/api/webhooks/omegapay/:identifier', (req,res) => {
 app.get('/api/admin/state', guard, (req, res) =>
   res.json({ profile: getProfile(), posts: db.prepare('SELECT * FROM posts ORDER BY created DESC').all().map(p => shape(p, true)) }));
 
+app.get('/api/admin/dashboard', guard, (req, res) => {
+  const visits = db.prepare('SELECT COUNT(*) AS n FROM site_visits').get().n;
+  const pix = db.prepare('SELECT COUNT(*) AS total, SUM(CASE WHEN status=\'COMPLETED\' THEN 1 ELSE 0 END) AS paid, COALESCE(SUM(CASE WHEN status=\'COMPLETED\' THEN amount ELSE 0 END),0) AS revenue FROM pix_transactions').get();
+  res.set('Cache-Control', 'no-store');
+  res.json({ visits, pixGenerated: pix.total || 0, pixPaid: pix.paid || 0, revenue: pix.revenue || 0 });
+});
+
 app.post('/api/admin/posts', guard, upload.array('files'), (req, res) => {
   const b = req.body || {}, pub = flag(b.published);
   if (pub && !req.files?.length) { (req.files || []).forEach(f => fs.rmSync(f.path, { force: true })); throw new Error('Envie ao menos uma imagem ou vÃ­deo para publicar.'); }
@@ -288,7 +296,11 @@ app.get('/media/:file', (req, res) => {
 });
 
 app.get('/admin', (req, res) => res.set('X-Robots-Tag', 'noindex').sendFile(path.join(here, 'public', 'admin.html')));
-app.use(express.static(path.join(here, 'public'), { index: 'index.html', extensions: [] }));
+app.get('/', (req, res, next) => {
+  try { db.prepare('INSERT INTO site_visits(visited_at) VALUES(?)').run(Date.now()); } catch {}
+  res.sendFile(path.join(here, 'public', 'index.html'), err => { if (err && !res.headersSent) next(err); });
+});
+app.use(express.static(path.join(here, 'public'), { index: false, extensions: [] }));
 app.use((e, req, res, next) => {
   const big = e.code === 'LIMIT_FILE_SIZE';
   res.status(big ? 413 : e.status || 400).json({ error: big ? `Arquivo maior que ${MAX_MB} MB.` : e.message });
