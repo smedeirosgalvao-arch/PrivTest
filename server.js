@@ -170,27 +170,60 @@ app.put('/api/admin/gateways', guard, (req,res) => {
   saveGatewayConfig({omega:{enabled:body.enabled===undefined?old.enabled:!!body.enabled,publicKey,secretKey,webhookToken}});
   res.json({ok:true,...publicGatewayState()});
 });
-// Checkout Pix: endpoint pÃºblico limitado a dados mÃ­nimos; preÃ§o precisa vir do catÃ¡logo do prÃ³prio site.
+// Checkout Pix: o preço é sempre lido do perfil salvo no servidor.
 app.post('/api/pix/create', async (req,res) => {
   const cfg=getGatewayConfig().omega;
-  if(!cfg.enabled || !cfg.publicKey || !cfg.secretKey || !cfg.webhookToken) return res.status(503).json({error:'Pagamento Pix temporariamente indisponÃ­vel.'});
+  if(!cfg.enabled || !cfg.publicKey || !cfg.secretKey || !cfg.webhookToken) {
+    return res.status(503).json({error:'Pagamento Pix temporariamente indisponível. Confira a configuração do gateway.'});
+  }
   const {name,email,phone='',document='',plan='1'}=req.body||{};
-  if(typeof name!=='string'||name.trim().length<2||name.length>120||typeof email!=='string'||!/^\S+@\S+\.\S+$/.test(email)||email.length>180) return res.status(400).json({error:'Informe nome e e-mail vÃ¡lidos.'});
+  const buyerName=typeof name==='string'?name.trim():'';
+  const buyerEmail=typeof email==='string'?email.trim():'';
+  if(buyerName.length<2||buyerName.length>120||!/^\\S+@\\S+\\.\\S+$/.test(buyerEmail)||buyerEmail.length>180) {
+    return res.status(400).json({error:'Informe nome e e-mail válidos.'});
+  }
   const profile=getProfile(), prices={'1':Number(profile.price1),'3':Number(profile.price3),'6':Number(profile.price6)};
   const amount=prices[String(plan)];
-  if(!Number.isFinite(amount)||amount<0.01) return res.status(400).json({error:'Plano ou preÃ§o invÃ¡lido.'});
+  if(!Number.isFinite(amount)||amount<0.01) return res.status(400).json({error:'Plano ou preço inválido.'});
+
   const identifier='site_'+crypto.randomUUID().replaceAll('-','');
   const base=`${req.protocol}://${req.get('host')}`;
   const callbackUrl=`${base}/api/webhooks/omegapay/${encodeURIComponent(identifier)}`;
-  const payload={identifier,amount,client:{name:name.trim(),email:email.trim(),...(phone?{phone:String(phone).slice(0,30)}:{}),...(document?{document:String(document).slice(0,30)}:{})},products:[{id:'subscription_'+plan,name:`Assinatura ${plan} ${plan==='1'?'mÃªs':'meses'}`,quantity:1,price:amount}],metadata:{provider:'site',orderId:identifier},callbackUrl};
+  const dueDate=new Date(Date.now()+30*60*1000).toISOString();
+  const payload={
+    identifier,amount,callbackUrl,dueDate,
+    client:{name:buyerName,email:buyerEmail,...(phone?{phone:String(phone).slice(0,30)}:{}),...(document?{document:String(document).slice(0,30)}:{})},
+    products:[{id:'subscription_'+plan,name:`Assinatura ${plan} ${plan==='1'?'mês':'meses'}`,quantity:1,price:amount}],
+    metadata:{provider:'site',orderId:identifier,plan:String(plan)}
+  };
   try {
-    const r=await fetch('https://app.omegapayments.com.br/api/v1/gateway/pix/receive',{method:'POST',headers:{'content-type':'application/json','x-public-key':cfg.publicKey,'x-secret-key':cfg.secretKey},body:JSON.stringify(payload),signal:AbortSignal.timeout(20000)});
+    const r=await fetch('https://app.omegapayments.com.br/api/v1/gateway/pix/receive',{
+      method:'POST',
+      headers:{'content-type':'application/json','x-public-key':cfg.publicKey,'x-secret-key':cfg.secretKey},
+      body:JSON.stringify(payload),
+      signal:AbortSignal.timeout(20000)
+    });
     const data=await r.json().catch(()=>({}));
-    if(!r.ok||!data.pix?.code||!data.transactionId) return res.status(502).json({error:'A OmegaPayments nÃ£o conseguiu criar a cobranÃ§a. Confira a configuraÃ§Ã£o e tente novamente.'});
+    // Normaliza os formatos de resposta mais comuns sem expor a resposta completa ao comprador.
+    const root=data?.data&&typeof data.data==='object'?data.data:data;
+    const pix=root?.pix||root?.payment?.pix||root?.payment||{};
+    const pixCode=pix?.code||pix?.copyPaste||pix?.copy_paste||pix?.brCode||pix?.pixCode||pix?.pixCopyPaste||root?.pixCode||root?.pixCopyPaste||root?.pix_code||root?.pixCopyPaste;
+    const pixImage=pix?.image||pix?.qrCode||pix?.qr_code||pix?.pixImage||pix?.pixQrCode||root?.pixImage||root?.pixQrCode||root?.pix_qr_code||null;
+    const transactionId=root?.transactionId||root?.transaction_id||root?.paymentId||root?.payment_id||root?.id||root?.transaction?.id;
+    const status=String(root?.transactionStatus||root?.transaction_status||root?.status||root?.transaction?.status||'PENDING').toUpperCase();
+    if(!r.ok||!pixCode||!transactionId) {
+      console.error('OmegaPayments Pix: resposta inválida',JSON.stringify({httpStatus:r.status,providerStatus:root?.status||root?.message||null,hasPixCode:!!pixCode,hasTransactionId:!!transactionId}));
+      return res.status(502).json({error:r.status===401||r.status===403?'A OmegaPayments recusou as credenciais. Confira as chaves do gateway.':r.status===400?'A OmegaPayments rejeitou os dados da cobrança. Confira a configuração do gateway.':'A OmegaPayments não retornou o código Pix esperado. Confira as chaves e tente novamente.'});
+    }
     const now=Date.now();
-    db.prepare('INSERT INTO pix_transactions(identifier,transaction_id,amount,status,client_email,pix_code,pix_image,webhook_token,created,updated) VALUES(?,?,?,?,?,?,?,?,?,?)').run(identifier,String(data.transactionId),amount,String(data.transactionStatus||data.status||'PENDING'),email.trim(),String(data.pix.code),String(data.pix.image||''),String(data.webhookToken||cfg.webhookToken),now,now);
-    res.json({ok:true,identifier,transactionId:data.transactionId,amount,pix:{code:data.pix.code,image:data.pix.image||null,expiresAt:data.pix.expiresAt||null}});
-  } catch { res.status(502).json({error:'NÃ£o foi possÃ­vel conectar ao provedor de pagamentos.'}); }
+    db.prepare('INSERT INTO pix_transactions(identifier,transaction_id,amount,status,client_email,pix_code,pix_image,webhook_token,created,updated) VALUES(?,?,?,?,?,?,?,?,?,?)')
+      .run(identifier,String(transactionId),amount,status,buyerEmail,String(pixCode),String(pixImage||''),String(root?.webhookToken||data?.webhookToken||cfg.webhookToken),now,now);
+    res.set('Cache-Control','no-store');
+    res.json({ok:true,identifier,transactionId:String(transactionId),amount,pix:{code:String(pixCode),image:pixImage?String(pixImage):null,expiresAt:pix?.expiresAt||pix?.expires_at||root?.expiresAt||root?.expires_at||dueDate}});
+  } catch (e) {
+    console.error('OmegaPayments Pix: falha de conexão',e?.name||'Error',e?.cause?.code||'');
+    return res.status(502).json({error:e?.name==='TimeoutError'?'A OmegaPayments demorou para responder. Verifique as cobranças antes de tentar novamente.':'Não foi possível conectar à OmegaPayments. Tente novamente em instantes.'});
+  }
 });
 
 app.post('/api/webhooks/omegapay/:identifier', (req,res) => {
