@@ -193,10 +193,17 @@ app.post('/api/pix/create', async (req,res) => {
   const identifier='site_'+crypto.randomUUID().replaceAll('-','');
   const base=`${req.protocol}://${req.get('host')}`;
   const callbackUrl=`${base}/api/webhooks/omegapay/${encodeURIComponent(identifier)}`;
-  const dueDate=new Date(Date.now()+30*60*1000).toISOString().slice(0,10);
+  // O provedor exige vencimento em data futura, telefone e documento do cliente.
+  // Use uma data UTC futura com margem para evitar falha quando a data local virar.
+  const dueDate=new Date(Date.now()+48*60*60*1000).toISOString().slice(0,10);
+  const normalizedPhone=String(phone||'').trim();
+  const normalizedDocument=String(document||'').trim();
+  if (!normalizedPhone || !normalizedDocument) {
+    return res.status(400).json({error:'Para gerar o Pix, informe telefone e CPF/CNPJ.'});
+  }
   const payload={
     identifier,amount,callbackUrl,dueDate,
-    client:{name:buyerName,email:buyerEmail,...(phone?{phone:String(phone).slice(0,30)}:{}),...(document?{document:String(document).slice(0,30)}:{})},
+    client:{name:buyerName,email:buyerEmail,phone:normalizedPhone.slice(0,30),document:normalizedDocument.slice(0,30)},
     products:[{id:'subscription_'+plan,name:`Assinatura ${plan} ${plan==='1'?'mês':'meses'}`,quantity:1,price:amount}],
     metadata:{provider:'site',orderId:identifier,plan:String(plan)}
   };
