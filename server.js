@@ -61,23 +61,7 @@ const customerEmail = req => {
   const active=db.prepare("SELECT 1 FROM subscriptions WHERE client_email=? COLLATE NOCASE AND status='ACTIVE' AND expires_at>? LIMIT 1").get(s.email,Date.now());
   return active?s.email:null;
 };
-app.post('/api/account/login',(req,res)=>{
-  const email=String(req.body?.email||'').trim().toLowerCase(), password=String(req.body?.password||'');
-  const a=db.prepare('SELECT * FROM customer_accounts WHERE email=? COLLATE NOCASE').get(email);
-  const hash=hashPw(password,a?.salt||'0');
-  if(!a||!crypto.timingSafeEqual(Buffer.from(hash,'hex'),Buffer.from(a.password_hash,'hex')))return res.status(401).json({error:'E-mail ou senha incorretos.'});
-  const active=db.prepare("SELECT 1 FROM subscriptions WHERE client_email=? COLLATE NOCASE AND status='ACTIVE' AND expires_at>? LIMIT 1").get(email,Date.now());
-  if(!active)return res.status(403).json({error:'Não encontramos uma assinatura ativa para esta conta.'});
-  const token=crypto.randomBytes(32).toString('hex');
-  db.prepare('INSERT INTO customer_sessions(token,email,expires) VALUES(?,?,?)').run(sha(token),email,Date.now()+30*864e5);
-  res.set('Set-Cookie',`member=${token}; HttpOnly; SameSite=Strict; Path=/; Max-Age=2592000${PROD?'; Secure':''}`);
-  res.json({ok:true});
-});
-app.post('/api/account/logout',(req,res)=>{
-  const token=getCookie(req,'member');if(token)db.prepare('DELETE FROM customer_sessions WHERE token=?').run(sha(token));
-  res.set('Set-Cookie','member=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0');res.json({ok:true});
-});
-app.get('/api/account/me',(req,res)=>{const email=customerEmail(req);res.set('Cache-Control','no-store');res.json({authenticated:!!email,email});});
+
 
 
 // ---------- perfil ----------
@@ -209,6 +193,24 @@ const publicGatewayState = () => { const c=getGatewayConfig().omega; return {ome
 
 // ---------- app ----------
 const app = express();
+app.post('/api/account/login',(req,res)=>{
+  const email=String(req.body?.email||'').trim().toLowerCase(), password=String(req.body?.password||'');
+  const a=db.prepare('SELECT * FROM customer_accounts WHERE email=? COLLATE NOCASE').get(email);
+  const hash=hashPw(password,a?.salt||'0');
+  if(!a||!crypto.timingSafeEqual(Buffer.from(hash,'hex'),Buffer.from(a.password_hash,'hex')))return res.status(401).json({error:'E-mail ou senha incorretos.'});
+  const active=db.prepare("SELECT 1 FROM subscriptions WHERE client_email=? COLLATE NOCASE AND status='ACTIVE' AND expires_at>? LIMIT 1").get(email,Date.now());
+  if(!active)return res.status(403).json({error:'Não encontramos uma assinatura ativa para esta conta.'});
+  const token=crypto.randomBytes(32).toString('hex');
+  db.prepare('INSERT INTO customer_sessions(token,email,expires) VALUES(?,?,?)').run(sha(token),email,Date.now()+30*864e5);
+  res.set('Set-Cookie',`member=${token}; HttpOnly; SameSite=Strict; Path=/; Max-Age=2592000${PROD?'; Secure':''}`);
+  res.json({ok:true});
+});
+app.post('/api/account/logout',(req,res)=>{
+  const token=getCookie(req,'member');if(token)db.prepare('DELETE FROM customer_sessions WHERE token=?').run(sha(token));
+  res.set('Set-Cookie','member=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0');res.json({ok:true});
+});
+app.get('/api/account/me',(req,res)=>{const email=customerEmail(req);res.set('Cache-Control','no-store');res.json({authenticated:!!email,email});});
+
 app.disable('x-powered-by');
 if (process.env.TRUST_PROXY) app.set('trust proxy', 1);
 app.use((req, res, next) => {
