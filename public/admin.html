@@ -169,7 +169,7 @@ input[type=file]{padding:12px;border-radius:11px;background:#0c120e;border-color
    <div class="row"><button class="btn" id="gwSave">Salvar configuração</button><button class="btn s" type="button" id="gwCancel">Cancelar</button></div>
   </form>
  </section>
- <section class="card" id="posts" data-panel><h2>Publicações</h2><div id="list"></div></section>
+ <section class="card" id="posts" data-panel><h2>Publicações</h2><p class="stats">Você pode criar posts de demonstração sem arquivos. Eles ficam identificados como demonstração.</p><div class="row" style="margin:0 0 16px"><label for="mockCount" style="margin:0;align-self:center">Quantidade</label><input id="mockCount" type="number" min="1" max="30" value="5" style="width:90px"><button class="btn" id="generateMocks" type="button">＋ Gerar publicações de demonstração</button></div><div class="err" id="mockErr" role="alert"></div><div id="list"></div></section>
 
  <section class="card" id="profile" data-panel hidden>
   <h2>Perfil</h2>
@@ -245,6 +245,7 @@ function drawSubscriptions(){
 function reset(){editing=null;$("#pf").reset();$("#lock").checked=true;$("#cur").innerHTML="";$("#ptitle").textContent="Nova publicação";$("#pcancel").hidden=true;$("#perr").textContent=""}
 $("#pcancel").onclick=reset;
 
+$("#generateMocks").onclick=async()=>{const button=$("#generateMocks"),err=$("#mockErr");err.textContent="";button.disabled=true;try{const r=await send("POST","/mock-posts",{count:$("#mockCount").value});err.textContent=r.created+" publicações de demonstração criadas.";await load()}catch(e){err.textContent=e.message}finally{button.disabled=false}};
 $("#list").onclick=async e=>{
  const b=e.target.closest("button");if(!b)return;
  const id=b.dataset.e||b.dataset.t||b.dataset.d,p=S.posts.find(x=>x.id==id);
