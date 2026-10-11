@@ -189,7 +189,7 @@ app.post('/api/pix/create', async (req,res) => {
   const identifier='site_'+crypto.randomUUID().replaceAll('-','');
   const base=`${req.protocol}://${req.get('host')}`;
   const callbackUrl=`${base}/api/webhooks/omegapay/${encodeURIComponent(identifier)}`;
-  const dueDate=new Date(Date.now()+30*60*1000).toISOString();
+  const dueDate=new Date(Date.now()+30*60*1000).toISOString().slice(0,10);
   const payload={
     identifier,amount,callbackUrl,dueDate,
     client:{name:buyerName,email:buyerEmail,...(phone?{phone:String(phone).slice(0,30)}:{}),...(document?{document:String(document).slice(0,30)}:{})},
