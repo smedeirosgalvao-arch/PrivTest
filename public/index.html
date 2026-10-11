@@ -265,17 +265,22 @@ $("#checkoutForm").addEventListener("submit",async e=>{
      const state=await check.json();
       if(state.active){
        $("#pixStatus").textContent="Pix confirmado! Entrando na sua conta…";
-       const memberResponse=await fetch("/api/member/access/"+encodeURIComponent(data.identifier),{method:"POST",cache:"no-store",credentials:"same-origin"});
-       const memberData=await memberResponse.json().catch(()=>({}));
-       if(memberResponse.ok&&memberData.ok){
-        clearInterval(pixPollTimer);
-        demo.posts=memberData.posts||[];demo.counts.locked=0;
-        $("#memberLoginOpen").hidden=true;$("#memberLogout").hidden=false;
-        render();$("#pixStatus").textContent="Pix confirmado! Você já está conectado e seu conteúdo foi liberado.";
-        closeCheckout();toast("Assinatura ativada! Você já está conectado.");
-       }else{
-        $("#pixStatus").textContent="Pix confirmado. Tentando liberar sua conta novamente…";
+       try{
+        const memberResponse=await fetch("/api/member/access/"+encodeURIComponent(data.identifier),{method:"POST",cache:"no-store",credentials:"same-origin"});
+        const memberData=await memberResponse.json().catch(()=>({}));
+        if(memberResponse.ok&&memberData.ok){
+         clearInterval(pixPollTimer);
+         demo.posts=memberData.posts||[];demo.counts.locked=0;
+         $("#memberLoginOpen").hidden=true;$("#memberLogout").hidden=false;
+         render();$("#pixStatus").textContent="Pix confirmado! Você já está conectado e seu conteúdo foi liberado.";
+         closeCheckout();toast("Assinatura ativada! Você já está conectado.");
+        }else{
+         $("#pixStatus").textContent="Pix confirmado, mas o servidor não liberou o acesso ("+memberResponse.status+"). Tentando novamente…";
+        }
+       }catch(accessError){
+        $("#pixStatus").textContent="Pix confirmado, mas houve erro ao entrar. Tentando novamente…";
        }
+      
      }else if(["CANCELED","REFUNDED","CHARGED_BACK","FAILED"].includes(state.status)){
       $("#pixStatus").textContent="O pagamento está com status: "+state.status+". Se você já pagou, fale com o suporte.";
       clearInterval(pixPollTimer);
