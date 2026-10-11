@@ -363,6 +363,17 @@ function handleOmegaWebhook(req,res) {
 app.post('/api/webhooks/omegapay', handleOmegaWebhook);
 app.post('/api/webhooks/omegapay/:identifier', handleOmegaWebhook);
 
+// Consulta pública do estado de uma cobrança para atualizar a tela após o pagamento.
+app.get('/api/pix/status/:identifier', (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  const identifier=String(req.params.identifier||'').trim();
+  if(!/^site_[a-f0-9]{32}$/.test(identifier)) return res.status(400).json({error:'Identificador inválido.'});
+  const row=db.prepare('SELECT status FROM pix_transactions WHERE identifier=?').get(identifier);
+  if(!row) return res.status(404).json({error:'Cobrança não encontrada.'});
+  const sub=db.prepare("SELECT status,expires_at FROM subscriptions WHERE pix_identifier=?").get(identifier);
+  res.json({status:row.status,active:!!sub&&sub.status==='ACTIVE'&&Number(sub.expires_at)>Date.now(),expiresAt:sub?.expires_at||null});
+});
+
 
 app.get('/api/admin/state', guard, (req, res) =>
   res.json({ profile: getProfile(), maxMb: MAX_MB, posts: db.prepare('SELECT * FROM posts ORDER BY created DESC').all().map(p => shape(p, true)) }));
