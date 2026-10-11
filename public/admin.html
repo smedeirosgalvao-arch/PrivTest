@@ -972,9 +972,18 @@ function drawStatsCharts(){
   const vals=rows.map(r=>Number(r[key])||0), max=Math.max(1,...vals);
   if(!rows.length){root.innerHTML="<p>Sem dados para exibir.</p>";return}
   if(!vals.some(v=>v>0)){root.innerHTML="<p>"+(key==="revenue"?"Nenhum pagamento confirmado neste período.":"Nenhuma visita registrada neste período.")+"</p>";return}
-  const barW= Math.min(28, 620/rows.length*0.62), step=620/rows.length;
-  const bars=rows.map((r,i)=>{const v=Number(r[key])||0,h=Math.max(v?2:0,(v/max)*130),x=42+i*step+(step-barW)/2,y=158-h;const label=(i%Math.ceil(rows.length/7)===0||i===rows.length-1)?r.date.slice(5):"";return '<g><title>'+esc(r.date)+': '+esc(format(v))+'</title><rect x="'+x.toFixed(1)+'" y="'+y.toFixed(1)+'" width="'+barW.toFixed(1)+'" height="'+h.toFixed(1)+'" rx="2" fill="currentColor" opacity=".8"/><text x="'+(x+barW/2).toFixed(1)+'" y="180" text-anchor="middle" font-size="9" fill="currentColor">'+label+'</text></g>'}).join("");
-  root.innerHTML='<svg viewBox="0 0 700 200" width="100%" height="200" aria-hidden="true"><line x1="36" y1="158" x2="670" y2="158" stroke="currentColor" opacity=".2"/>'+bars+'</svg><p class="hint">'+(key==="revenue"?"Valores em reais (R$).":"Quantidade de acessos.")+'</p>';
+  const barW=Math.min(28,620/rows.length*0.62),step=620/rows.length;
+  const bars=rows.map((r,i)=>{
+   const v=Number(r[key])||0,h=Math.max(v?2:0,(v/max)*130),x=42+i*step+(step-barW)/2,y=158-h;
+   const label=(i%Math.ceil(rows.length/7)===0||i===rows.length-1)?r.date.slice(5):"";
+   return '<g class="stat-bar" tabindex="0" role="button" aria-label="'+esc(r.date)+': '+esc(format(v))+'" data-stat-date="'+esc(r.date)+'" data-stat-value="'+esc(format(v))+'" style="cursor:pointer"><title>'+esc(r.date)+': '+esc(format(v))+' — toque para ver detalhes</title><rect x="'+x.toFixed(1)+'" y="'+y.toFixed(1)+'" width="'+barW.toFixed(1)+'" height="'+Math.max(h,5).toFixed(1)+'" rx="2" fill="currentColor" opacity=".8"/><rect x="'+(x-3).toFixed(1)+'" y="'+Math.max(0,y-4).toFixed(1)+'" width="'+(barW+6).toFixed(1)+'" height="'+(Math.max(h,5)+8).toFixed(1)+'" fill="transparent"/><text x="'+(x+barW/2).toFixed(1)+'" y="180" text-anchor="middle" font-size="9" fill="currentColor">'+label+'</text></g>';
+  }).join("");
+  root.innerHTML='<svg viewBox="0 0 700 200" width="100%" height="200" aria-label="Gráfico interativo" style="overflow:visible;touch-action:manipulation"><line x1="36" y1="158" x2="670" y2="158" stroke="currentColor" opacity=".2"/>'+bars+'</svg><p class="hint">Toque/clique em uma barra para ver o valor do dia.</p><p class="stat-detail hint" aria-live="polite">Selecione uma barra para ver os detalhes.</p>';
+  root.querySelectorAll("[data-stat-date]").forEach(bar=>{
+   const show=()=>{const detail=root.querySelector(".stat-detail");if(detail)detail.textContent=bar.dataset.statDate+" · "+bar.dataset.statValue};
+   bar.addEventListener("click",show);
+   bar.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();show()}});
+  });
  };
  render("salesChart","revenue",v=>money(v));
  render("visitsChart","visits",v=>num(v));
