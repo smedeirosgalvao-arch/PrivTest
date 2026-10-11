@@ -245,7 +245,7 @@ app.post('/api/pix/create', async (req,res) => {
   const {name,email,password,passwordConfirm,phone='',document='',plan='1'}=req.body||{};
   const buyerName=typeof name==='string'?name.trim():'';
   const buyerEmail=typeof email==='string'?email.trim().toLowerCase():'';
-  if(buyerName.length<2||buyerName.length>120||!/^\\S+@\\S+\\.\\S+$/.test(buyerEmail)||buyerEmail.length>180) {
+  if(buyerName.length<2||buyerName.length>120||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(buyerEmail)||buyerEmail.length>180) {
     return res.status(400).json({error:'Informe nome e e-mail válidos.'});
   }
   if(typeof password!=='string'||password.length<8||password.length>200) return res.status(400).json({error:'A senha deve ter entre 8 e 200 caracteres.'});
