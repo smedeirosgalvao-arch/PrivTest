@@ -469,8 +469,10 @@ app.post('/api/admin/posts', guard, upload.array('files'), (req, res) => {
     const explicit = parseOrder(b.order, files.length);
     stored = store(files);
     const now = Date.now(), caption = String(b.caption || '').slice(0, 2000);
+    const fakeImages = Math.max(0, Math.min(1000000, Math.trunc(Number(b.fake_images) || 0)));
+    const fakeVideos = Math.max(0, Math.min(1000000, Math.trunc(Number(b.fake_videos) || 0)));
     const id = tx(() => {
-      const pid = Number(db.prepare('INSERT INTO posts(caption,published,locked,created,updated) VALUES(?,0,?,?,?)').run(caption, locked, now, now).lastInsertRowid);
+      const pid = Number(db.prepare('INSERT INTO posts(caption,published,locked,created,updated,fake_images,fake_videos) VALUES(?,0,?,?,?,?,?)').run(caption, locked, now, now, fakeImages, fakeVideos).lastInsertRowid);
       const ids = applyMedia(pid, explicit ?? stored.map((_, k) => ({ type: 'n', k })), stored);
       if (pub && !ids.length) throw new Error('Adicione ao menos uma imagem ou vídeo para publicar.');
       db.prepare('UPDATE posts SET published=? WHERE id=?').run(pub, pid);
@@ -493,6 +495,8 @@ app.put('/api/admin/posts/:id', guard, upload.array('files'), (req, res) => {
     const published = b.published !== undefined ? flag(b.published) : p.published;
     const caption = b.caption !== undefined ? String(b.caption).slice(0, 2000) : p.caption;
     const locked = b.locked !== undefined ? flag(b.locked) : p.locked;
+    const fakeImages = b.fake_images !== undefined && Number.isInteger(Number(b.fake_images)) && Number(b.fake_images) >= 0 ? Math.min(1000000, Number(b.fake_images)) : p.fake_images;
+    const fakeVideos = b.fake_videos !== undefined && Number.isInteger(Number(b.fake_videos)) && Number(b.fake_videos) >= 0 ? Math.min(1000000, Number(b.fake_videos)) : p.fake_videos;
     const touchesMedia = explicit !== null || removeIds.length > 0 || stored.length > 0;
     tx(() => {
       const seq = explicit ?? [
@@ -501,7 +505,7 @@ app.put('/api/admin/posts/:id', guard, upload.array('files'), (req, res) => {
       ];
       const ids = applyMedia(id, seq, stored);
       if (published && !ids.length && (b.published !== undefined || touchesMedia)) throw new Error('Uma publicação publicada precisa de ao menos uma imagem ou vídeo.');
-      db.prepare('UPDATE posts SET caption=?,published=?,locked=?,updated=? WHERE id=?').run(caption, published, locked, Date.now(), id);
+      db.prepare('UPDATE posts SET caption=?,published=?,locked=?,updated=?,fake_images=?,fake_videos=? WHERE id=?').run(caption, published, locked, Date.now(), fakeImages, fakeVideos, id);
     });
     res.json(shape(db.prepare('SELECT * FROM posts WHERE id=?').get(id), true));
   } catch (e) { discardStored(stored); throw e; }
