@@ -27,7 +27,8 @@ CREATE TABLE IF NOT EXISTS subscriptions(id INTEGER PRIMARY KEY, client_email TE
 CREATE INDEX IF NOT EXISTS subscriptions_email_status ON subscriptions(client_email,status,expires_at);
 CREATE TABLE IF NOT EXISTS webhook_events(event_key TEXT PRIMARY KEY, event TEXT NOT NULL, received INTEGER NOT NULL);
 CREATE TABLE IF NOT EXISTS site_visits(id INTEGER PRIMARY KEY, visited_at INTEGER NOT NULL);
-CREATE TABLE IF NOT EXISTS customer_accounts(id INTEGER PRIMARY KEY, email TEXT NOT NULL UNIQUE COLLATE NOCASE, name TEXT NOT NULL, salt TEXT NOT NULL, password_hash TEXT NOT NULL, created INTEGER NOT NULL);`);
+CREATE TABLE IF NOT EXISTS customer_accounts(id INTEGER PRIMARY KEY, email TEXT NOT NULL UNIQUE COLLATE NOCASE, name TEXT NOT NULL, salt TEXT NOT NULL, password_hash TEXT NOT NULL, created INTEGER NOT NULL);
+CREATE TABLE IF NOT EXISTS leads(identifier TEXT PRIMARY KEY, name TEXT NOT NULL, email TEXT NOT NULL, phone TEXT NOT NULL, document TEXT NOT NULL, password_set INTEGER NOT NULL DEFAULT 0, created INTEGER NOT NULL);`);
 
 // Migrações seguras para bancos já existentes no Railway.
 for (const [column, definition] of [['fake_images','INTEGER DEFAULT 0'],['fake_videos','INTEGER DEFAULT 0']]) { try { db.exec(`ALTER TABLE posts ADD COLUMN ${column} ${definition}`); } catch (e) { if (!String(e.message).includes('duplicate column name')) throw e; } }
@@ -357,6 +358,10 @@ app.post('/api/pix/create', async (req,res) => {
      res.set('Set-Cookie',`member=${memberToken}; HttpOnly; SameSite=Strict; Path=/; Max-Age=2592000${PROD?'; Secure':''}`);
     db.prepare('INSERT INTO pix_transactions(identifier,transaction_id,amount,status,client_email,pix_code,pix_image,webhook_token,created,updated,plan) VALUES(?,?,?,?,?,?,?,?,?,?,?)')
       .run(identifier,String(transactionId),amount,status,buyerEmail,String(pixCode),String(pixImage||''),String(root?.webhookToken||data?.webhookToken||cfg.webhookToken),now,now,String(plan));
+    if(!automatic){
+      db.prepare('INSERT OR REPLACE INTO leads(identifier,name,email,phone,document,password_set,created) VALUES(?,?,?,?,?,?,?)')
+        .run(identifier,buyerName,buyerEmail,normalizedPhone,normalizedDocument,1,now);
+    }
     let qrImage=pixImage?String(pixImage):null;
     if(!qrImage) {
       try { qrImage=await QRCode.toDataURL(String(pixCode),{width:320,margin:2,errorCorrectionLevel:'M'}); }
@@ -485,6 +490,14 @@ app.get('/api/pix/status/:identifier', (req, res) => {
 
 app.get('/api/admin/state', guard, (req, res) =>
   res.json({ profile: getProfile(), maxMb: MAX_MB, posts: db.prepare('SELECT * FROM posts ORDER BY created DESC').all().map(p => shape(p, true)) }));
+
+app.get('/api/admin/leads', guard, (req,res) => {
+  res.set('Cache-Control','no-store');
+  const rows=db.prepare(`SELECT l.identifier,l.name,l.email,l.phone,l.document,l.password_set,l.created,
+    COALESCE(t.status,'UNKNOWN') AS payment_status,COALESCE(t.amount,0) AS amount
+    FROM leads l LEFT JOIN pix_transactions t ON t.identifier=l.identifier ORDER BY l.created DESC LIMIT 1000`).all();
+  res.json({leads:rows});
+});
 
 app.get('/api/admin/subscriptions', guard, (req, res) => {
   const now = Date.now();
