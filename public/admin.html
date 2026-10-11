@@ -82,6 +82,10 @@ p{margin:0}
 .page-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 .card{background:linear-gradient(180deg,var(--surf),#11141a);border:1px solid var(--line);border-radius:var(--radius);padding:20px;box-shadow:var(--shadow);min-width:0}
 .card+.card{margin-top:16px}
+.two-col>.card+.card{margin-top:0}
+.stat-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.stat-grid>.card{margin:0;min-width:0}
+@media (max-width:1180px){.stat-grid{grid-template-columns:1fr}}
 .card-head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap}
 .card-head p{color:var(--muted);font-size:12.5px;margin-top:3px}
 .grid{display:grid;gap:14px}
@@ -95,8 +99,38 @@ p{margin:0}
 .kpi small{color:var(--faint);font-size:11.5px}
 .two-col{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);gap:16px;margin-top:16px}
 .stack{display:grid;gap:16px}
-.chart{height:220px;border:1px dashed var(--line2);border-radius:var(--radius-sm);display:grid;place-items:center;text-align:center;color:var(--faint);padding:20px;background:repeating-linear-gradient(90deg,transparent 0 48px,rgba(255,255,255,.015) 48px 49px)}
-.chart p{max-width:260px;font-size:13px}
+.chart{position:relative;min-height:190px;width:100%}
+.chart svg{display:block;width:100%;height:auto;overflow:visible}
+.chart .cg{stroke:rgba(255,255,255,.07);stroke-width:1}
+.chart .ct{fill:var(--faint);font-size:10.5px;font-family:inherit}
+.chart .bar{transform-box:fill-box;transform-origin:50% 100%;animation:barIn .55s cubic-bezier(.2,.8,.2,1) both}
+@keyframes barIn{from{transform:scaleY(0)}to{transform:scaleY(1)}}
+.chart .line{animation:fadeIn .7s ease both}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+.chart .hit{fill:transparent;cursor:pointer;outline:none}
+.chart .hit:focus-visible{fill:rgba(183,255,60,.07)}
+.chart .cursor{stroke:var(--line2);stroke-dasharray:3 3;pointer-events:none}
+.chart-tip{position:absolute;top:8px;transform:translateX(-50%);z-index:3;pointer-events:none;background:var(--surf3);border:1px solid var(--line2);border-radius:10px;padding:8px 10px;font-size:12px;box-shadow:var(--shadow);min-width:150px;white-space:nowrap}
+.chart-tip[hidden]{display:none}
+.chart-tip b{display:block;margin-bottom:5px;color:var(--ink)}
+.chart-tip .row{display:flex;justify-content:space-between;align-items:center;gap:14px;color:var(--ink2);margin-top:3px}
+.chart-tip .row strong{color:var(--ink)}
+.chart-tip i,.legend i{display:inline-block;width:8px;height:8px;border-radius:3px;margin-right:6px;vertical-align:middle}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-top:8px}
+.chart-empty{display:grid;place-items:center;min-height:190px;height:100%;text-align:center;color:var(--faint);border:1px dashed var(--line2);border-radius:12px;padding:18px;background:repeating-linear-gradient(90deg,transparent 0 48px,rgba(255,255,255,.015) 48px 49px)}
+.chart-empty strong{display:block;color:var(--ink2);font-weight:600;margin-bottom:4px;font-size:13.5px}
+.chart-empty p{font-size:12.5px;max-width:300px;margin:0 auto}
+.chart-empty.is-loading strong{color:var(--muted)}
+.chart-list{min-height:120px}
+.bars-list{display:flex;flex-direction:column;gap:14px}
+.bar-row{display:grid;grid-template-columns:96px minmax(0,1fr) 96px;gap:12px;align-items:center;font-size:13px}
+.bar-label{color:var(--ink2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bar-track{height:10px;border-radius:99px;background:var(--surf3);overflow:hidden}
+.bar-fill{height:100%;border-radius:99px;transition:width .6s cubic-bezier(.2,.8,.2,1)}
+.bar-val{text-align:right;font-weight:600;white-space:nowrap}
+.bar-val small{display:block;color:var(--faint);font-weight:500;font-size:11px}
+.period .btn.active{background:var(--accent-soft);border-color:rgba(183,255,60,.4);color:var(--accent)}
+@media (max-width:480px){.bar-row{grid-template-columns:78px minmax(0,1fr) 74px;gap:9px}.chart .ct{font-size:9.5px}}
 .feed{display:flex;flex-direction:column}
 .feed-item{display:flex;gap:12px;align-items:center;padding:12px 0;border-top:1px solid var(--line)}
 .feed-item:first-child{border-top:0;padding-top:0}
@@ -290,6 +324,8 @@ progress{width:100%;height:6px;accent-color:var(--accent);margin-top:12px}
 .post-cap{overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
 @media (max-width:480px){.mitem{grid-template-columns:48px minmax(0,1fr)}.mitem .mactions{grid-column:1/-1;justify-content:flex-end}.mthumb{width:48px;height:48px}.pick-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{transition:none!important;animation:none!important;scroll-behavior:auto!important}}
+/* indicadores de estatísticas: 2 colunas no celular (regra no fim para vencer as regras anteriores) */
+@media (max-width:480px){.kpi-row{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.kpi-row .kpi{padding:13px}.kpi-row .kpi strong{font-size:19px;margin:8px 0 3px}.kpi-row .kpi small{font-size:10.5px}}
 </style>
 </head>
 <body>
@@ -368,6 +404,11 @@ progress{width:100%;height:6px;accent-color:var(--accent);margin-top:12px}
       <section id="dashboard" data-panel hidden>
         <div class="page-head">
           <div><p id="sum" class="hint">Carregando resumo…</p></div>
+          <div class="period" role="group" aria-label="Período dos gráficos">
+            <button class="btn ghost sm" type="button" data-stats-days="7" aria-pressed="true">7 dias</button>
+            <button class="btn ghost sm" type="button" data-stats-days="30" aria-pressed="false">30 dias</button>
+            <button class="btn ghost sm" type="button" data-stats-days="90" aria-pressed="false">90 dias</button>
+          </div>
         </div>
         <div class="err" id="dashErr" role="alert" style="margin:-4px 0 10px"></div>
 
@@ -387,7 +428,7 @@ progress{width:100%;height:6px;accent-color:var(--accent);margin-top:12px}
           <div class="card">
             <div class="card-head"><div><h2>Visitas</h2><p>Acessos diários à página pública</p></div></div>
             <div class="chart" id="visitsChart" role="img" aria-label="Gráfico de visitas">Carregando…</div>
-            <div class="btns" style="margin-top:10px"><button class="btn ghost sm" type="button" data-stats-days="7">7 dias</button><button class="btn ghost sm" type="button" data-stats-days="30">30 dias</button></div>
+
           </div>
         </div>
 
@@ -595,24 +636,35 @@ progress{width:100%;height:6px;accent-color:var(--accent);margin-top:12px}
         </div>
       </section>
 
-      <!-- ===== ESTATÍSTICAS (estrutura) ===== -->
+      <!-- ===== ESTATÍSTICAS ===== -->
       <section id="stats" data-panel hidden>
         <div class="page-head">
-          <div><p class="hint">Indicadores de acesso e vendas.</p></div>
+          <div><p class="hint" id="statsPeriodLabel">Últimos 7 dias</p></div>
           <div class="period" role="group" aria-label="Período">
-            <button class="btn ghost sm" type="button" disabled>7 dias</button>
-            <button class="btn ghost sm" type="button" disabled>30 dias</button>
-            <button class="btn ghost sm" type="button" disabled>90 dias</button>
+            <button class="btn ghost sm" type="button" data-stats-days="7" aria-pressed="true">7 dias</button>
+            <button class="btn ghost sm" type="button" data-stats-days="30" aria-pressed="false">30 dias</button>
+            <button class="btn ghost sm" type="button" data-stats-days="90" aria-pressed="false">90 dias</button>
           </div>
         </div>
         <div class="kpi-row">
-          <article class="kpi"><div class="kpi-top"><span>Taxa de conversão</span></div><strong>—</strong><small>Visitas que viraram assinatura</small></article>
-          <article class="kpi"><div class="kpi-top"><span>Ticket médio</span></div><strong>—</strong><small>Valor médio por assinatura</small></article>
-          <article class="kpi"><div class="kpi-top"><span>Novos assinantes</span></div><strong>—</strong><small>No período selecionado</small></article>
+          <article class="kpi"><div class="kpi-top"><span>Visitas</span></div><strong id="statVisits">—</strong><small>Acessos à página pública</small></article>
+          <article class="kpi"><div class="kpi-top"><span>Pagamentos confirmados</span></div><strong id="statPaid">—</strong><small id="statPixGen">Pix pagos no período</small></article>
+          <article class="kpi"><div class="kpi-top"><span>Faturamento</span></div><strong id="statRevenue">—</strong><small>Soma dos pagamentos confirmados</small></article>
+          <article class="kpi"><div class="kpi-top"><span>Conversão</span></div><strong id="statConv">—</strong><small>Pagamentos sobre visitas</small></article>
+          <article class="kpi"><div class="kpi-top"><span>Ticket médio</span></div><strong id="statTicket">—</strong><small>Faturamento por pagamento</small></article>
+          <article class="kpi"><div class="kpi-top"><span>Novos assinantes</span></div><strong id="statNew">—</strong><small>Assinaturas criadas no período</small></article>
         </div>
-        <div class="two-col">
-          <div class="card"><div class="card-head"><div><h2>Acessos por dia</h2></div></div><div class="chart"><p>Gráfico disponível quando houver dados no período.</p></div></div>
-          <div class="card"><div class="card-head"><div><h2>Planos vendidos</h2></div></div><div class="chart"><p>Distribuição por plano disponível quando houver vendas.</p></div></div>
+        <div class="stat-grid">
+          <div class="card"><div class="card-head"><div><h2>Visitas por dia</h2><p>Acessos à página pública</p></div></div><div class="chart" id="statVisitsChart">Carregando…</div></div>
+          <div class="card"><div class="card-head"><div><h2>Faturamento por dia</h2><p>Pagamentos confirmados</p></div></div><div class="chart" id="statRevenueChart">Carregando…</div></div>
+        </div>
+        <div class="stat-grid">
+          <div class="card"><div class="card-head"><div><h2>Pix gerados x pagos</h2><p>Cobranças criadas e confirmadas por dia</p></div></div><div class="chart" id="statPixChart">Carregando…</div></div>
+          <div class="card"><div class="card-head"><div><h2>Novos assinantes</h2><p>Assinaturas criadas por dia</p></div></div><div class="chart" id="statNewChart">Carregando…</div></div>
+        </div>
+        <div class="stat-grid">
+          <div class="card"><div class="card-head"><div><h2>Planos vendidos</h2><p>Todas as assinaturas registradas</p></div></div><div class="chart-list" id="planChart">Carregando…</div></div>
+          <div class="card"><div class="card-head"><div><h2>Situação das cobranças</h2><p>Todas as cobranças Pix</p></div></div><div class="chart-list" id="statusChart">Carregando…</div></div>
         </div>
       </section>
 
@@ -864,6 +916,7 @@ function activateTab(name){
  if(name==="gateways")loadGateways();
  if(name==="library")loadLibrary();
  if(name==="posts")load().catch(()=>{});
+ if(name==="stats"||name==="dashboard")setTimeout(renderCharts,0);
  $("#tabHeading").textContent=PAGES[name].title;
  document.title=PAGES[name].title+" · PrivTest";
  renderCrumbs(name);
@@ -884,7 +937,7 @@ document.addEventListener("keydown",e=>{if(e.key==="Escape"){closeOmega();closeM
 async function load(){
  try{
   S=await send("GET","/state");if(S.maxMb)libMax=S.maxMb;
-  try{dashboard=await send("GET","/dashboard?days="+statsDays);dashError=""}catch(e){dashboard=null;dashError=e.message||"Erro ao carregar métricas."}
+  try{dashboard=await send("GET",dashPath());dashError=""}catch(e){dashboard=null;dashError=e.message||"Erro ao carregar métricas."}
   try{const subData=await send("GET","/subscriptions");subscriptions=subData.subscriptions||[];subsError=""}catch(e){subscriptions=[];subsError=e.message||"Erro ao carregar assinaturas."}
   try{await loadPayments()}catch(e){payments=[];paymentsError=e.message||"Erro ao carregar pagamentos."}
   view(true);draw();drawSubscriptions();drawPayments();
@@ -964,36 +1017,154 @@ function renderOverviewLists(){
   :`<div class="empty"><div><strong>Nenhuma publicação</strong><p>Crie a primeira para começar.</p></div></div>`;
 }
 
-function drawStatsCharts(){
- document.querySelectorAll("[data-stats-days]").forEach(b=>{const active=Number(b.dataset.statsDays)===statsDays;b.classList.toggle("active",active);b.setAttribute("aria-pressed",String(active))});
- const rows=dashboard?.series||[];
- const render=(id,key,format)=>{
-  const root=$("#"+id);if(!root)return;
-  const vals=rows.map(r=>Number(r[key])||0), max=Math.max(1,...vals);
-  if(!rows.length){root.innerHTML="<p>Sem dados para exibir.</p>";return}
-  if(!vals.some(v=>v>0)){root.innerHTML="<p>"+(key==="revenue"?"Nenhum pagamento confirmado neste período.":"Nenhuma visita registrada neste período.")+"</p>";return}
-  const barW=Math.min(28,620/rows.length*0.62),step=620/rows.length;
-  const bars=rows.map((r,i)=>{
-   const v=Number(r[key])||0,h=Math.max(v?2:0,(v/max)*130),x=42+i*step+(step-barW)/2,y=158-h;
-   const label=(i%Math.ceil(rows.length/7)===0||i===rows.length-1)?r.date.slice(5):"";
-   return '<g class="stat-bar" tabindex="0" role="button" aria-label="'+esc(r.date)+': '+esc(format(v))+'" data-stat-date="'+esc(r.date)+'" data-stat-value="'+esc(format(v))+'" style="cursor:pointer"><title>'+esc(r.date)+': '+esc(format(v))+' — toque para ver detalhes</title><rect x="'+x.toFixed(1)+'" y="'+y.toFixed(1)+'" width="'+barW.toFixed(1)+'" height="'+Math.max(h,5).toFixed(1)+'" rx="2" fill="currentColor" opacity=".8"/><rect x="'+(x-3).toFixed(1)+'" y="'+Math.max(0,y-4).toFixed(1)+'" width="'+(barW+6).toFixed(1)+'" height="'+(Math.max(h,5)+8).toFixed(1)+'" fill="transparent"/><text x="'+(x+barW/2).toFixed(1)+'" y="180" text-anchor="middle" font-size="9" fill="currentColor">'+label+'</text></g>';
-  }).join("");
-  root.innerHTML='<svg viewBox="0 0 700 200" width="100%" height="200" aria-label="Gráfico interativo" style="overflow:visible;touch-action:manipulation"><line x1="36" y1="158" x2="670" y2="158" stroke="currentColor" opacity=".2"/>'+bars+'</svg><p class="hint">Toque/clique em uma barra para ver o valor do dia.</p><p class="stat-detail hint" aria-live="polite">Selecione uma barra para ver os detalhes.</p>';
-  root.querySelectorAll("[data-stat-date]").forEach(bar=>{
-   const show=()=>{const detail=root.querySelector(".stat-detail");if(detail)detail.textContent=bar.dataset.statDate+" · "+bar.dataset.statValue};
-   bar.addEventListener("click",show);
-   bar.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();show()}});
-  });
+/* ---------- gráficos (SVG próprio; a CSP do painel não permite bibliotecas externas) ---------- */
+const TZ=(()=>{try{return Intl.DateTimeFormat().resolvedOptions().timeZone||"UTC"}catch{return "UTC"}})();
+const CH={accent:"#b7ff3c",blue:"#5ab8ff",amber:"#ffc46b",mute:"#6b7585"};
+const dashPath=()=>"/dashboard?days="+statsDays+"&tz="+encodeURIComponent(TZ);
+const shortNum=v=>{v=Number(v)||0;return v>=1e6?(v/1e6).toFixed(1).replace(/\.0$/,"")+"M":v>=1e3?(v/1e3).toFixed(1).replace(/\.0$/,"")+"k":String(Math.round(v))};
+function niceScale(peak){
+ if(!(peak>0))return {top:1,step:0.5};
+ const mag=Math.pow(10,Math.floor(Math.log10(peak)));
+ for(const m of [mag/10,mag,mag*10]){for(const k of [1,2,5]){const step=k*m;if(step<=0)continue;if(peak>=1&&step<1)continue;if(Math.ceil(peak/step)<=5)return {top:Math.ceil(peak/step)*step,step}}}
+ return {top:peak,step:peak/4};
+}
+const dayShort=k=>{const p=String(k).split("-");return p.length===3?p[2]+"/"+p[1]:k};
+const dayFull=k=>{const p=String(k).split("-");return p.length===3?p[2]+"/"+p[1]+"/"+p[0]:k};
+const chartSeq_={n:0};
+function chartMsg(el,title,text,loading){
+ el.classList.remove("is-empty");
+ el.innerHTML=`<div class="chart-empty${loading?" is-loading":""}"><div><strong>${esc(title)}</strong>${text?`<p>${esc(text)}</p>`:""}</div></div>`;
+}
+function drawSeries(id,cfg){
+ const el=$("#"+id); if(!el)return;
+ const rows=cfg.rows||[];
+ const hasData=rows.length&&cfg.series.some(s=>rows.some(r=>Number(r[s.key])>0));
+ if(!hasData){chartMsg(el,cfg.emptyTitle,cfg.emptyText);return}
+ el.classList.remove("is-empty");
+ el.innerHTML="";
+ const W=Math.max(260,Math.floor(el.clientWidth||640)), H=W<480?190:220;
+ const pl=46,pr=8,pt=14,pb=26,iw=W-pl-pr,ih=H-pt-pb;
+ const peak=Math.max(...cfg.series.flatMap(s=>rows.map(r=>Number(r[s.key])||0)));
+ const sc=niceScale(peak), top=sc.top, colW=iw/rows.length;
+ const cx=i=>pl+(i+.5)*colW, yOf=v=>pt+ih-(Math.max(0,v)/top)*ih;
+ const gid="gc"+(++chartSeq_.n);
+ let svg=`<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" aria-hidden="true" focusable="false">`;
+ svg+="<defs>"+cfg.series.map((s,si)=>`<linearGradient id="${gid}-${si}" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="${s.color}" stop-opacity=".32"/><stop offset="1" stop-color="${s.color}" stop-opacity="0"/></linearGradient>`).join("")+"</defs>";
+ const ticks=Math.round(top/sc.step);for(let t=0;t<=ticks;t++){const v=sc.step*t,y=yOf(v);svg+=`<line class="cg" x1="${pl}" x2="${W-pr}" y1="${y}" y2="${y}"/><text class="ct" x="${pl-8}" y="${y+4}" text-anchor="end">${esc(cfg.axisFmt?cfg.axisFmt(v):shortNum(v))}</text>`}
+ const step=Math.max(1,Math.ceil(rows.length/7));
+ rows.forEach((r,i)=>{if(i%step===0||i===rows.length-1)svg+=`<text class="ct" x="${cx(i)}" y="${H-7}" text-anchor="middle">${dayShort(r.date)}</text>`});
+ cfg.series.forEach((s,si)=>{
+  const vals=rows.map(r=>Number(r[s.key])||0);
+  if(cfg.kind==="bar"){
+   const bw=Math.max(4,Math.min(30,colW*.6));
+   vals.forEach((v,i)=>{const y=yOf(v),hgt=pt+ih-y;if(hgt<=0)return;svg+=`<rect class="bar" x="${(cx(i)-bw/2).toFixed(1)}" y="${y.toFixed(1)}" width="${bw.toFixed(1)}" height="${hgt.toFixed(1)}" rx="${Math.min(6,bw/2).toFixed(1)}" fill="${s.color}" style="animation-delay:${i*14}ms"/>`});
+  }else{
+   const pts=vals.map((v,i)=>[cx(i),yOf(v)]);
+   const d=pts.map((p,i)=>(i?"L":"M")+p[0].toFixed(1)+" "+p[1].toFixed(1)).join(" ");
+   if(si===0)svg+=`<path d="${d} L${cx(rows.length-1).toFixed(1)} ${pt+ih} L${cx(0).toFixed(1)} ${pt+ih} Z" fill="url(#${gid}-${si})"/>`;
+   svg+=`<path class="line" d="${d}" fill="none" stroke="${s.color}" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>`;
+   if(rows.length<=45)pts.forEach(p=>svg+=`<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="2.6" fill="${s.color}"/>`);
+  }
+ });
+ svg+=`<line class="cursor" x1="0" x2="0" y1="${pt}" y2="${pt+ih}" style="display:none"/>`;
+ rows.forEach((r,i)=>{
+  const label=dayFull(r.date)+": "+cfg.series.map(s=>s.label+" "+cfg.fmt(Number(r[s.key])||0)).join(", ");
+  svg+=`<rect class="hit" data-i="${i}" x="${(pl+i*colW).toFixed(1)}" y="${pt}" width="${colW.toFixed(1)}" height="${ih}" tabindex="0" role="img" aria-label="${esc(label)}"/>`;
+ });
+ svg+="</svg>";
+ const legend=cfg.series.length>1?`<div class="legend">${cfg.series.map(s=>`<span><i style="background:${s.color}"></i>${esc(s.label)}</span>`).join("")}</div>`:"";
+ el.innerHTML=svg+'<div class="chart-tip" hidden></div>'+legend;
+ const tip=el.querySelector(".chart-tip"), guide=el.querySelector(".cursor");
+ const show=i=>{
+  const r=rows[i];
+  tip.innerHTML=`<b>${esc(dayFull(r.date))}</b>`+cfg.series.map(s=>`<div class="row"><span><i style="background:${s.color}"></i>${esc(s.label)}</span><strong>${esc(cfg.fmt(Number(r[s.key])||0))}</strong></div>`).join("");
+  tip.hidden=false;
+  const x=cx(i);tip.style.left=Math.min(Math.max(x,80),W-80)+"px";
+  guide.setAttribute("x1",x);guide.setAttribute("x2",x);guide.style.display="";
  };
- render("salesChart","revenue",v=>money(v));
- render("visitsChart","visits",v=>num(v));
+ const hide=()=>{tip.hidden=true;guide.style.display="none"};
+ el.querySelectorAll(".hit").forEach(n=>{
+  const i=+n.dataset.i;
+  n.addEventListener("pointerenter",e=>{if(e.pointerType!=="touch")show(i)});
+  n.addEventListener("pointerdown",()=>show(i));
+  n.addEventListener("pointerleave",e=>{if(e.pointerType!=="touch")hide()});
+  n.addEventListener("focus",()=>show(i));
+  n.addEventListener("blur",hide);
+ });
+}
+function drawBarList(id,cfg){
+ const el=$("#"+id); if(!el)return;
+ const items=cfg.items||[], total=items.reduce((a,x)=>a+(Number(x.value)||0),0);
+ if(!total){chartMsg(el,cfg.emptyTitle,cfg.emptyText);return}
+ const max=Math.max(...items.map(x=>Number(x.value)||0));
+ el.innerHTML=`<div class="bars-list">${items.map(it=>{const v=Number(it.value)||0,pct=Math.round(v/total*100);return `<div class="bar-row"><span class="bar-label" title="${esc(it.label)}">${esc(it.label)}</span><div class="bar-track" role="img" aria-label="${esc(it.label)}: ${esc(cfg.fmt(v))}, ${pct}%"><div class="bar-fill" style="width:${max?(v/max*100).toFixed(1):0}%;background:${it.color}"></div></div><span class="bar-val">${esc(cfg.fmt(v))}<small>${pct}%</small></span></div>`}).join("")}</div>`;
+}
+function setPeriodButtons(){
+ document.querySelectorAll("[data-stats-days]").forEach(b=>{
+  const on=Number(b.dataset.statsDays)===statsDays;
+  b.classList.toggle("active",on);b.setAttribute("aria-pressed",String(on));
+ });
+ $("#statsPeriodLabel").textContent="Últimos "+statsDays+" dias";
+}
+function setChartsLoading(){
+ ["salesChart","visitsChart","statVisitsChart","statRevenueChart","statPixChart","statNewChart"].forEach(id=>{const el=$("#"+id);if(el)chartMsg(el,"Carregando…","",true)});
+}
+function renderCharts(){
+ setPeriodButtons();
+ const d=dashboard, err=!d;
+ const ids=["salesChart","visitsChart","statVisitsChart","statRevenueChart","statPixChart","statNewChart"];
+ const p=d?.period||{};
+ if(err){
+  ids.forEach(id=>{const el=$("#"+id);if(el)chartMsg(el,"Não foi possível carregar","Atualize a página para tentar de novo.")});
+  ["statVisits","statPaid","statRevenue","statConv","statTicket","statNew"].forEach(id=>$("#"+id).textContent="—");
+  $("#statPixGen").textContent="Pix pagos no período";
+  ["planChart","statusChart"].forEach(id=>chartMsg($("#"+id),"Não foi possível carregar","Atualize a página para tentar de novo."));
+  return;
+ }
+ const rows=d.series||[];
+ const pa=(a,b)=>b?(a/b*100).toFixed(1).replace(".",",")+"%":"—";
+ $("#statVisits").textContent=num(p.visits);
+ $("#statPaid").textContent=num(p.pixPaid);
+ $("#statPixGen").textContent=num(p.pixGenerated)+" Pix gerados no período";
+ $("#statRevenue").textContent=money(p.revenue);
+ $("#statConv").textContent=pa(p.pixPaid,p.visits);
+ $("#statTicket").textContent=p.pixPaid?money(p.revenue/p.pixPaid):"—";
+ $("#statNew").textContent=num(p.newSubscriptions);
+
+ drawSeries("salesChart",{rows,kind:"bar",series:[{key:"revenue",label:"Faturamento",color:CH.accent}],fmt:money,axisFmt:v=>"R$ "+shortNum(v),emptyTitle:"Sem vendas no período",emptyText:"Os pagamentos confirmados aparecem aqui, dia a dia."});
+ drawSeries("visitsChart",{rows,kind:"bar",series:[{key:"visits",label:"Visitas",color:CH.blue}],fmt:num,emptyTitle:"Sem visitas no período",emptyText:"Os acessos à página pública aparecem aqui, dia a dia."});
+ drawSeries("statVisitsChart",{rows,kind:"line",series:[{key:"visits",label:"Visitas",color:CH.blue}],fmt:num,emptyTitle:"Sem visitas no período",emptyText:"Os acessos à página pública aparecem aqui, dia a dia."});
+ drawSeries("statRevenueChart",{rows,kind:"bar",series:[{key:"revenue",label:"Faturamento",color:CH.accent}],fmt:money,axisFmt:v=>"R$ "+shortNum(v),emptyTitle:"Sem vendas no período",emptyText:"Os pagamentos confirmados aparecem aqui, dia a dia."});
+ drawSeries("statPixChart",{rows,kind:"line",series:[{key:"pixGenerated",label:"Gerados",color:CH.amber},{key:"pixPaid",label:"Pagos",color:CH.accent}],fmt:num,emptyTitle:"Sem cobranças no período",emptyText:"As cobranças Pix criadas e pagas aparecem aqui, dia a dia."});
+ drawSeries("statNewChart",{rows,kind:"bar",series:[{key:"newSubscriptions",label:"Novos assinantes",color:CH.accent}],fmt:num,emptyTitle:"Sem novos assinantes",emptyText:"As assinaturas criadas no período aparecem aqui, dia a dia."});
+
+ const planCount={"1":0,"3":0,"6":0};
+ (subscriptions||[]).forEach(s=>{const k=String(s.plan);if(k in planCount)planCount[k]++});
+ drawBarList("planChart",{fmt:num,emptyTitle:"Nenhuma venda ainda",emptyText:"Os planos aparecem aqui conforme as assinaturas forem confirmadas.",items:[
+  {label:"1 mês",value:planCount["1"],color:CH.accent},
+  {label:"3 meses",value:planCount["3"],color:CH.blue},
+  {label:"6 meses",value:planCount["6"],color:CH.amber}]});
+ const ps=paymentsSummary||{total:0,paid:0,pending:0};
+ const others=Math.max(0,(ps.total||0)-(ps.paid||0)-(ps.pending||0));
+ drawBarList("statusChart",{fmt:num,emptyTitle:"Nenhuma cobrança ainda",emptyText:"As cobranças Pix aparecem aqui conforme forem criadas.",items:[
+  {label:"Pagas",value:ps.paid||0,color:CH.accent},
+  {label:"Pendentes",value:ps.pending||0,color:CH.amber},
+  {label:"Outras",value:others,color:CH.mute}]});
 }
 document.querySelectorAll("[data-stats-days]").forEach(b=>b.addEventListener("click",async()=>{
- statsDays=Number(b.dataset.statsDays)===30?30:7;
- $("#salesChart").textContent="Carregando…";$("#visitsChart").textContent="Carregando…";
- try{dashboard=await send("GET","/dashboard?days="+statsDays);dashError="";drawStatsCharts()}
- catch(e){dashError=e.message||"Erro ao carregar métricas.";$("#dashErr").textContent="Não foi possível carregar as métricas."}
+ const next=Number(b.dataset.statsDays);
+ if(![7,30,90].includes(next)||(next===statsDays&&dashboard))return;
+ statsDays=next;
+ setPeriodButtons();setChartsLoading();
+ try{dashboard=await send("GET",dashPath());dashError=""}
+ catch(e){dashboard=null;dashError=e.message||"Erro ao carregar métricas."}
+ $("#dashErr").textContent=dashError?"Não foi possível carregar as métricas. Atualize a página para tentar de novo.":"";
+ renderCharts();
 }));
+let resizeT=null;
+window.addEventListener("resize",()=>{clearTimeout(resizeT);resizeT=setTimeout(()=>{if(!$("#app").hidden)renderCharts()},160)});
+document.addEventListener("pointerdown",e=>{document.querySelectorAll(".chart-tip").forEach(t=>{if(!t.parentElement.contains(e.target))t.hidden=true})});
+
 function draw(){
  const P=S.posts,pub=P.filter(p=>p.published);
  const imageCount=P.reduce((n,p)=>n+(Number(p.images)||0),0),videoCount=P.reduce((n,p)=>n+(Number(p.videos)||0),0);
@@ -1003,7 +1174,7 @@ function draw(){
  $("#ovPixPaid").textContent=d?num(d.pixPaid):"—";
  $("#ovRevenue").textContent=d?money(d.revenue):"—";
  $("#dashErr").textContent=dashError?"Não foi possível carregar as métricas. Atualize a página para tentar de novo.":"";
- drawStatsCharts();
+ renderCharts();
  $("#kpiPosts").textContent=num(P.length);
  $("#kpiPostsSub").textContent=`${num(pub.length)} publicadas`;
  $("#sum").textContent=`${num(pub.length)} publicadas · ${num(imageCount)} imagens · ${num(videoCount)} vídeos`;
