@@ -163,7 +163,7 @@ input[type=file]{padding:12px;border-radius:11px;background:#0c120e;border-color
  <section class="card" id="omegaModal" hidden><h2>Configurar OmegaPayments</h2><p class="stats">As credenciais são armazenadas criptografadas no banco de dados do site. Não compartilhe suas chaves.</p>
   <form id="gwform"><label for="omegaPublic">Chave pública</label><input id="omegaPublic" type="text" autocomplete="off" required>
    <label for="omegaSecret">Chave secreta</label><input id="omegaSecret" type="password" autocomplete="new-password" placeholder="Deixe vazio para manter a chave salva">
-   <label for="omegaWebhook">Token de validação do webhook</label><input id="omegaWebhook" type="password" autocomplete="new-password" placeholder="Token exclusivo para os webhooks" required>
+   <label for="omegaWebhook">Token de validação do webhook (opcional)</label><input id="omegaWebhook" type="password" autocomplete="new-password" placeholder="Gerado automaticamente se ficar vazio">
    <div class="stats" id="omegaWebhookUrl"></div><div class="err" id="gwformerr" role="alert"></div>
    <div class="row"><button class="btn" id="gwSave">Salvar configuração</button><button class="btn s" type="button" id="gwCancel">Cancelar</button></div>
   </form>
