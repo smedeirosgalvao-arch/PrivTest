@@ -332,6 +332,9 @@ app.post('/api/pix/create', async (req,res) => {
     const now=Date.now();
     const salt=crypto.randomBytes(16).toString('hex');
     db.prepare('INSERT INTO customer_accounts(email,name,salt,password_hash,created) VALUES(?,?,?,?,?)').run(buyerEmail,buyerName,salt,hashPw(password,salt),now);
+     const memberToken=crypto.randomBytes(32).toString('hex');
+     db.prepare('INSERT INTO customer_sessions(token,email,expires) VALUES(?,?,?)').run(sha(memberToken),buyerEmail,now+30*864e5);
+     res.set('Set-Cookie',`member=${memberToken}; HttpOnly; SameSite=Strict; Path=/; Max-Age=2592000${PROD?'; Secure':''}`);
     db.prepare('INSERT INTO pix_transactions(identifier,transaction_id,amount,status,client_email,pix_code,pix_image,webhook_token,created,updated,plan) VALUES(?,?,?,?,?,?,?,?,?,?,?)')
       .run(identifier,String(transactionId),amount,status,buyerEmail,String(pixCode),String(pixImage||''),String(root?.webhookToken||data?.webhookToken||cfg.webhookToken),now,now,String(plan));
     let qrImage=pixImage?String(pixImage):null;
