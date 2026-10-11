@@ -252,10 +252,52 @@ progress{width:100%;height:6px;accent-color:var(--accent);margin-top:12px}
   .trow{grid-template-columns:1fr}
   .login-card{padding:22px}
 }
+.media-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:12px}
+.media-card{border:1px solid var(--line);border-radius:12px;background:var(--surf2);overflow:hidden;display:flex;flex-direction:column;min-width:0;transition:border-color .15s}
+.media-card:hover{border-color:var(--line2)}
+.media-thumb{aspect-ratio:4/3;background:#0c0e12;display:grid;place-items:center;overflow:hidden;cursor:pointer}
+.media-thumb img,.media-thumb video{width:100%;height:100%;object-fit:cover;display:block}
+.media-info{padding:11px 12px 4px;display:flex;flex-direction:column;gap:6px;min-width:0}
+.media-name{font-weight:600;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.media-meta{color:var(--faint);font-size:11.5px}
+.media-actions{display:flex;gap:6px;flex-wrap:wrap;padding:10px 12px 12px;margin-top:auto}
+.media-actions .btn{flex:1 1 auto}
+.media-actions .btn:disabled{opacity:.4}
+.media-stage{background:#0c0e12;border-radius:12px;overflow:hidden;display:grid;place-items:center;min-height:200px;margin:12px 0}
+.media-stage img,.media-stage video{max-width:100%;max-height:60vh;display:block}
+@media (max-width:480px){.media-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.media-actions{padding:8px}.media-actions .btn{padding:0 7px;font-size:11.5px}}
+.mlist{display:flex;flex-direction:column;gap:8px}
+.mitem{display:grid;grid-template-columns:56px minmax(0,1fr) auto;gap:12px;align-items:center;border:1px solid var(--line);border-radius:12px;background:var(--surf2);padding:8px}
+.mthumb{width:56px;height:56px;border-radius:9px;overflow:hidden;background:#0c0e12;display:grid;place-items:center}
+.mthumb img,.mthumb video{width:100%;height:100%;object-fit:cover;display:block}
+.mmeta{min-width:0;display:flex;flex-direction:column;gap:5px;align-items:flex-start}
+.mname{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.mactions{display:flex;gap:5px;align-items:center}
+.mactions .btn{min-width:34px;padding:0 9px}
+.pick-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px;max-height:52vh;overflow:auto;padding:2px}
+.pick-item{position:relative;display:flex;flex-direction:column;gap:6px;border:1px solid var(--line);border-radius:12px;padding:6px;background:var(--surf2);cursor:pointer;min-width:0}
+.pick-item:has(input:checked){border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-soft)}
+.pick-item input{position:absolute;top:10px;left:10px;width:18px;height:18px;accent-color:var(--accent);margin:0}
+.pick-item .media-thumb{aspect-ratio:4/3;border-radius:9px}
+.pick-item .media-meta{font-size:11.5px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pv-post-media{aspect-ratio:4/5;background:#0c0e12;display:grid;place-items:center;overflow:hidden;border-radius:12px;border:1px solid var(--line)}
+.pv-post-media img,.pv-post-media video{width:100%;height:100%;object-fit:cover;display:block}
+.pv-empty{color:var(--faint);font-size:13px}
+.pv-cap{color:var(--ink2);font-size:13.5px;margin:10px 0 8px;white-space:pre-wrap;word-break:break-word}
+.pv-strip{display:flex;gap:6px;flex-wrap:wrap}
+.pv-strip div{width:44px;height:44px;border-radius:8px;overflow:hidden;background:#0c0e12;border:1px solid var(--line)}
+.pv-strip img,.pv-strip video{width:100%;height:100%;object-fit:cover;display:block}
+.post-cap{overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+@media (max-width:480px){.mitem{grid-template-columns:48px minmax(0,1fr)}.mitem .mactions{grid-column:1/-1;justify-content:flex-end}.mthumb{width:48px;height:48px}.pick-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{transition:none!important;animation:none!important;scroll-behavior:auto!important}}
 </style>
 </head>
 <body>
+
+<!-- ============ VERIFICANDO SESSÃO ============ -->
+<section id="boot" class="login-wrap">
+  <div class="empty" style="width:min(100%,400px)"><div><div class="empty-ico"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></div><strong>Verificando sessão…</strong><p>Aguarde um instante.</p></div></div>
+</section>
 
 <!-- ============ LOGIN ============ -->
 <section id="login" class="login-wrap" hidden>
@@ -327,6 +369,7 @@ progress{width:100%;height:6px;accent-color:var(--accent);margin-top:12px}
         <div class="page-head">
           <div><p id="sum" class="hint">Carregando resumo…</p></div>
         </div>
+        <div class="err" id="dashErr" role="alert" style="margin:-4px 0 10px"></div>
 
         <div class="kpis">
           <article class="kpi"><div class="kpi-top"><span>Visitas</span><span class="kpi-ico"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3.5 3 14.5 0 18M12 3c-3 3.5-3 14.5 0 18"/></svg></span></div><strong id="ovVisits">—</strong><small>Acessos à página pública</small></article>
@@ -381,59 +424,76 @@ progress{width:100%;height:6px;accent-color:var(--accent);margin-top:12px}
               <option value="all">Todas</option>
               <option value="pub">Publicadas</option>
               <option value="draft">Rascunhos</option>
+              <option value="locked">Bloqueadas</option>
             </select>
           </div>
           <div id="list"></div>
+          <div id="postPager" class="page-actions" style="justify-content:space-between;margin-top:14px" hidden>
+            <button class="btn ghost sm" type="button" id="pgPrev">← Anterior</button>
+            <span class="hint" id="pgInfo"></span>
+            <button class="btn ghost sm" type="button" id="pgNext">Próxima →</button>
+          </div>
         </div>
       </section>
 
-      <!-- ===== NOVA PUBLICAÇÃO ===== -->
+      <!-- ===== NOVA PUBLICAÇÃO / EDIÇÃO ===== -->
       <section id="newpost" data-panel hidden>
         <div class="page-head">
-          <div><p class="hint">Escolha como a publicação aparece no site.</p></div>
+          <div><p class="hint">Monte a publicação, ordene as mídias e confira a pré-visualização antes de salvar.</p></div>
           <div class="page-actions"><button class="btn ghost" type="button" data-go="posts">← Voltar às publicações</button></div>
         </div>
-        <div class="card">
-          <h2 id="ptitle" style="margin-bottom:16px">Nova publicação</h2>
-          <form id="pf">
-            <div class="form-grid">
-              <div class="field full"><label for="cap">Legenda</label><textarea id="cap" maxlength="2000"></textarea></div>
-              <div class="field full"><label for="files">Imagens e vídeos</label><input id="files" type="file" accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/quicktime,video/webm" multiple></div>
-              <div class="full"><div class="meds" id="cur" style="display:flex;gap:10px;flex-wrap:wrap"></div></div>
-            </div>
-            <label class="chk"><input id="lock" type="checkbox" checked><span>Conteúdo bloqueado (o site mostra só o cadeado e os contadores)</span></label>
-            <label class="chk"><input id="pub" type="checkbox"><span>Publicar no site</span></label>
-            <progress id="bar" max="100" value="0" hidden></progress>
-            <div class="err" id="perr" role="alert"></div>
-            <div class="page-actions" style="margin-top:12px">
-              <button class="btn" id="psave" type="submit">Salvar</button>
-              <button class="btn ghost" type="button" id="pcancel" hidden>Cancelar edição</button>
-            </div>
-          </form>
+        <div class="two-col" style="margin-top:0;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr)">
+          <div class="card">
+            <h2 id="ptitle" style="margin-bottom:16px">Nova publicação</h2>
+            <form id="pf">
+              <div class="field"><label for="cap">Legenda</label><textarea id="cap" maxlength="2000"></textarea></div>
+              <div class="page-actions" style="margin:14px 0">
+                <button class="btn ghost sm" type="button" id="pickLib">+ Da biblioteca</button>
+                <label class="btn ghost sm" for="files" style="cursor:pointer">+ Enviar novas mídias</label>
+              </div>
+              <input id="files" type="file" multiple hidden accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/quicktime,video/webm">
+              <p class="hint" style="margin-bottom:10px">Use as setas para definir a ordem. A primeira mídia é a capa.</p>
+              <div id="cur" class="mlist"></div>
+              <label class="chk"><input id="lock" type="checkbox" checked><span>Conteúdo bloqueado (o site mostra só o cadeado e os contadores)</span></label>
+              <label class="chk"><input id="pub" type="checkbox"><span>Publicar no site (desmarcado salva como rascunho)</span></label>
+              <progress id="bar" max="100" value="0" hidden></progress>
+              <div class="err" id="perr" role="alert"></div>
+              <div class="page-actions" style="margin-top:12px">
+                <button class="btn" id="psave" type="submit">Salvar</button>
+                <button class="btn ghost" type="button" id="pcancel" hidden>Cancelar edição</button>
+              </div>
+            </form>
+          </div>
+          <div class="card">
+            <h2 style="margin-bottom:14px">Pré-visualização</h2>
+            <div id="pvPost"></div>
+          </div>
         </div>
       </section>
 
-      <!-- ===== BIBLIOTECA DE MÍDIAS (estrutura) ===== -->
+      <!-- ===== BIBLIOTECA DE MÍDIAS ===== -->
       <section id="library" data-panel hidden>
         <div class="page-head">
-          <div><p class="hint">Imagens e vídeos enviados ao seu perfil.</p></div>
-          <div class="page-actions"><button class="btn" type="button" disabled title="Disponível na próxima etapa">Enviar mídia</button></div>
+          <div><p class="hint">Imagens e vídeos disponíveis para o seu conteúdo.</p></div>
+          <div class="page-actions"><button class="btn" type="button" id="libPick">Enviar mídia</button></div>
         </div>
+        <input id="libFiles" type="file" multiple hidden accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/quicktime,video/webm">
         <div class="card">
           <div class="toolbar">
             <div class="search">
               <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
-              <input type="search" placeholder="Pesquisar mídias" aria-label="Pesquisar mídias" disabled>
+              <input id="libSearch" type="search" placeholder="Pesquisar pelo nome do arquivo" aria-label="Pesquisar mídias">
             </div>
             <div class="seg" role="group" aria-label="Tipo de mídia">
-              <button type="button" aria-pressed="true" disabled>Todas</button>
-              <button type="button" aria-pressed="false" disabled>Imagens</button>
-              <button type="button" aria-pressed="false" disabled>Vídeos</button>
+              <button type="button" data-type="all" aria-pressed="true">Todas</button>
+              <button type="button" data-type="image" aria-pressed="false">Imagens</button>
+              <button type="button" data-type="video" aria-pressed="false">Vídeos</button>
             </div>
           </div>
-          <div class="empty">
-            <div><div class="empty-ico"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2.5"/><circle cx="8.5" cy="9" r="1.6"/><path d="M3 17l5-5 4 4 3-3 6 6"/></svg></div><strong>Biblioteca de mídias</strong><p>A grade de imagens e vídeos será exibida aqui.</p></div>
-          </div>
+          <p class="hint" id="libHint" style="margin:-4px 0 12px"></p>
+          <progress id="libBar" max="100" value="0" hidden></progress>
+          <div class="err" id="libMsg" role="status"></div>
+          <div id="libGrid" class="media-grid" style="margin-top:8px"></div>
         </div>
       </section>
 
@@ -459,13 +519,13 @@ progress{width:100%;height:6px;accent-color:var(--accent);margin-top:12px}
                 <div class="field"><label>TikTok</label><input type="text" disabled placeholder="Em breve"></div>
               </div>
               <div class="err" id="rerr" role="alert"></div>
-              <div class="page-actions" style="margin-top:12px"><button class="btn" type="submit">Salvar perfil</button></div>
+              <div class="page-actions" style="margin-top:12px"><button class="btn" type="submit" id="prSave">Salvar perfil</button></div>
             </form>
           </div>
           <div class="card">
             <h2 style="margin-bottom:16px">Pré-visualização</h2>
             <div class="preview">
-              <div class="pv-cover"></div>
+              <div class="pv-cover" id="pvCover"></div>
               <div class="pv-body">
                 <div class="pv-avatar" id="pvAv">?</div>
                 <div class="pv-name" id="pvName">—</div>
@@ -575,6 +635,25 @@ progress{width:100%;height:6px;accent-color:var(--accent);margin-top:12px}
   </div>
 </div>
 
+<!-- ============ MODAL: ESCOLHER MÍDIAS DA BIBLIOTECA ============ -->
+<div id="pickModal" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="pickTitle">
+  <div class="modalbox" style="width:min(100%,760px)">
+    <div class="card-head" style="margin-bottom:12px"><div><h2 id="pickTitle">Escolher da biblioteca</h2><p class="hint">Mídias já existentes podem ser usadas em mais de uma publicação.</p></div></div>
+    <div id="pickList" class="pick-grid"></div>
+    <div class="btns"><button class="btn ghost" id="pickCancel" type="button">Cancelar</button><button class="btn" id="pickAdd" type="button" disabled>Adicionar</button></div>
+  </div>
+</div>
+
+<!-- ============ MODAL: VISUALIZAR MÍDIA ============ -->
+<div id="mediaModal" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="mediaTitle">
+  <div class="modalbox" style="width:min(100%,680px)">
+    <div class="card-head" style="margin-bottom:0"><div style="min-width:0"><h2 id="mediaTitle" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Mídia</h2><p class="hint" id="mediaMeta"></p></div><button class="btn ghost sm" id="mediaClose" type="button">Fechar</button></div>
+    <div class="media-stage" id="mediaStage"></div>
+    <div class="code" id="mediaUrl"></div>
+    <div class="btns"><button class="btn ghost" id="mediaCopy" type="button">Copiar link</button></div>
+  </div>
+</div>
+
 <!-- ============ MODAL: CONFIGURAR OMEGAPAYMENTS ============ -->
 <div id="omegaModal" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="omegaTitle">
   <div class="modalbox">
@@ -603,7 +682,8 @@ const num=v=>Number(v||0).toLocaleString("pt-BR");
 const money=v=>Number(v||0).toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
 const dateBR=v=>v?new Date(Number(v)).toLocaleString("pt-BR",{dateStyle:"short",timeStyle:"short"}):"—";
 
-let S={posts:[],profile:{}}, editing=null, dashboard={visits:0,pixGenerated:0,pixPaid:0,revenue:0}, subscriptions=[];
+let S={posts:[],profile:{}}, editing=null, dashboard=null, dashError="", subscriptions=[], subsError="";
+const errBlock=msg=>`<div class="empty"><div><strong>Não foi possível carregar</strong><p>${esc(msg)}</p></div></div>`;
 
 function send(method,path,body,onp){return new Promise((ok,fail)=>{
  const x=new XMLHttpRequest();x.open(method,"/api/admin"+path);x.withCredentials=true;x.setRequestHeader("X-CSRF","1");
@@ -615,6 +695,126 @@ function send(method,path,body,onp){return new Promise((ok,fail)=>{
  x.onerror=()=>fail(new Error("Falha de conexão."));x.send(b)})}
 
 function view(logged){$("#login").hidden=logged;$("#app").hidden=!logged}
+
+/* ---------- biblioteca de mídias ---------- */
+const MEDIA_ACCEPT=["image/jpeg","image/png","image/webp","image/gif","video/mp4","video/quicktime","video/webm"];
+let library=[], libMax=300, libType="all", libError="", libItems=null;
+const fmtBytes=n=>n==null?"—":n<1024?n+" B":n<1048576?(n/1024).toFixed(1)+" KB":(n/1048576).toFixed(1)+" MB";
+const libMsg=(text,ok)=>{const m=$("#libMsg");m.className=ok?"err ok-msg":"err";m.textContent=text};
+
+async function loadLibrary(){
+ libError="";libItems=null;
+ $("#libGrid").innerHTML='<div class="empty" style="grid-column:1/-1"><div><strong>Carregando mídias…</strong></div></div>';
+ try{const r=await send("GET","/media");library=r.items||[];if(r.maxMb)libMax=r.maxMb}
+ catch(e){library=[];libError=e.message||"Erro ao carregar mídias."}
+ renderLibrary();
+}
+
+function renderLibrary(){
+ const grid=$("#libGrid");
+ if(libError){
+  $("#libHint").textContent="";
+  grid.innerHTML=`<div class="empty" style="grid-column:1/-1"><div><strong>Não foi possível carregar as mídias</strong><p>${esc(libError)}</p><div style="margin-top:12px"><button class="btn ghost sm" type="button" data-retry="1">Tentar novamente</button></div></div></div>`;
+  return;
+ }
+ $("#libHint").textContent=`Formatos: JPG, PNG, WEBP, GIF, MP4, MOV e WEBM · até ${libMax} MB por arquivo`;
+ if(!library.length){
+  grid.innerHTML='<div class="empty" style="grid-column:1/-1"><div><div class="empty-ico"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2.5"/><circle cx="8.5" cy="9" r="1.6"/><path d="M3 17l5-5 4 4 3-3 6 6"/></svg></div><strong>Nenhuma mídia ainda</strong><p>Envie imagens ou vídeos para começar a montar sua biblioteca.</p></div></div>';
+  return;
+ }
+ const q=($("#libSearch").value||"").trim().toLowerCase();
+ const items=library.filter(m=>(libType==="all"||m.kind===libType)&&(!q||String(m.name||"").toLowerCase().includes(q)));
+ if(!items.length){
+  grid.innerHTML='<div class="empty" style="grid-column:1/-1"><div><strong>Nenhum resultado</strong><p>Ajuste a pesquisa ou o tipo de mídia.</p></div></div>';
+  return;
+ }
+ grid.innerHTML=items.map(m=>`
+  <article class="media-card">
+   <div class="media-thumb" data-view="${m.id}" role="button" tabindex="0" aria-label="Visualizar ${esc(m.name||"mídia")}">
+    ${m.kind==="video"?`<video src="${esc(m.url)}#t=0.1" muted playsinline preload="metadata"></video>`:`<img src="${esc(m.url)}" alt="" loading="lazy">`}
+   </div>
+   <div class="media-info">
+    <div class="media-name" title="${esc(m.name||"")}">${esc(m.name)||"Sem nome"}</div>
+    <div class="post-tags">
+     <span class="badge mute">${m.kind==="video"?"Vídeo":"Imagem"}</span>
+     <span class="badge mute">${fmtBytes(m.size)}</span>
+     ${m.inUse?'<span class="badge ok">Em publicação</span>':'<span class="badge mute">Avulsa</span>'}
+    </div>
+    <div class="media-meta">${m.created?dateBR(m.created):"Data não registrada"}</div>
+   </div>
+   <div class="media-actions">
+    <button class="btn ghost sm" type="button" data-view="${m.id}">Ver</button>
+    <button class="btn ghost sm" type="button" data-copy="${m.id}">Copiar link</button>
+    <button class="btn danger sm" type="button" data-del="${m.id}" ${m.inUse?'disabled title="Esta mídia está em uma publicação"':""}>Excluir</button>
+   </div>
+  </article>`).join("");
+}
+
+async function copyText(t){
+ try{await navigator.clipboard.writeText(t);return true}catch{}
+ const ta=document.createElement("textarea");ta.value=t;ta.setAttribute("readonly","");ta.style.position="fixed";ta.style.opacity="0";
+ document.body.appendChild(ta);ta.select();let ok=false;try{ok=document.execCommand("copy")}catch{}ta.remove();return ok;
+}
+const absUrl=m=>location.origin+m.url;
+
+function openMedia(id){
+ const m=library.find(x=>String(x.id)===String(id));if(!m)return;
+ $("#mediaTitle").textContent=m.name||"Mídia";
+ $("#mediaMeta").textContent=`${m.kind==="video"?"Vídeo":"Imagem"} · ${fmtBytes(m.size)}${m.created?" · "+dateBR(m.created):""}${m.inUse?" · em publicação":""}`;
+ $("#mediaStage").innerHTML=m.kind==="video"?`<video src="${esc(m.url)}" controls playsinline preload="metadata"></video>`:`<img src="${esc(m.url)}" alt="${esc(m.name||"")}">`;
+ $("#mediaUrl").textContent=absUrl(m);
+ $("#mediaCopy").dataset.copy=m.id;
+ $("#mediaModal").hidden=false;
+}
+function closeMedia(){$("#mediaModal").hidden=true;$("#mediaStage").innerHTML=""}
+$("#mediaClose").onclick=closeMedia;
+$("#mediaModal").addEventListener("click",e=>{if(e.target.id==="mediaModal")closeMedia()});
+$("#mediaCopy").onclick=async()=>{const m=library.find(x=>String(x.id)===String($("#mediaCopy").dataset.copy));if(m)$("#mediaCopy").textContent=(await copyText(absUrl(m)))?"Link copiado":"Não foi possível copiar"};
+
+$("#libGrid").addEventListener("click",async e=>{
+ const retry=e.target.closest("[data-retry]");if(retry){loadLibrary();return}
+ const view=e.target.closest("[data-view]");if(view){openMedia(view.dataset.view);return}
+ const copy=e.target.closest("[data-copy]");
+ if(copy){const m=library.find(x=>String(x.id)===copy.dataset.copy);if(m){libMsg((await copyText(absUrl(m)))?"Link copiado para a área de transferência.":"Não foi possível copiar. Selecione o link manualmente.",true)}return}
+ const del=e.target.closest("[data-del]");
+ if(del){
+  const m=library.find(x=>String(x.id)===del.dataset.del);if(!m||m.inUse)return;
+  if(!confirm(`Excluir "${m.name||"esta mídia"}"? O arquivo será removido e não dá para desfazer.`))return;
+  del.disabled=true;
+  try{await send("DELETE","/media/"+m.id);libMsg("Mídia excluída.",true);await loadLibrary()}
+  catch(err){libMsg(err.message,false);del.disabled=false}
+ }
+});
+$("#libGrid").addEventListener("keydown",e=>{if((e.key==="Enter"||e.key===" ")&&e.target.matches("[data-view]")){e.preventDefault();openMedia(e.target.dataset.view)}});
+
+document.querySelectorAll("[data-type]").forEach(b=>b.addEventListener("click",()=>{
+ libType=b.dataset.type;
+ document.querySelectorAll("[data-type]").forEach(x=>x.setAttribute("aria-pressed",String(x===b)));
+ renderLibrary();
+}));
+$("#libSearch").addEventListener("input",renderLibrary);
+
+$("#libPick").onclick=()=>$("#libFiles").click();
+$("#libFiles").onchange=async()=>{
+ const input=$("#libFiles"),files=[...input.files];input.value="";
+ if(!files.length)return;
+ const rejected=[],valid=[];
+ for(const f of files){
+  if(!MEDIA_ACCEPT.includes(f.type))rejected.push(`${f.name}: formato não suportado`);
+  else if(f.size>libMax*1048576)rejected.push(`${f.name}: maior que ${libMax} MB`);
+  else valid.push(f);
+ }
+ const extra=rejected.length?" Não enviados: "+rejected.join(" · "):"";
+ if(!valid.length){libMsg(rejected.join(" · "),false);return}
+ const fd=new FormData();valid.forEach(f=>fd.append("files",f));
+ const bar=$("#libBar");bar.hidden=false;bar.value=0;$("#libPick").disabled=true;libMsg("Enviando…",true);
+ try{
+  const r=await send("POST","/media",fd,v=>bar.value=v);
+  libMsg(`${r.created} arquivo(s) enviado(s).`+extra,true);
+  await loadLibrary();
+ }catch(err){libMsg(err.message+extra,false)}
+ finally{bar.hidden=true;$("#libPick").disabled=false}
+};
 
 /* ---------- navegação ---------- */
 const PAGES={
@@ -646,6 +846,9 @@ function activateTab(name){
  });
  document.querySelectorAll("[data-panel]").forEach(p=>p.hidden=p.id!==name);
  if(name!=="gateways")closeOmega();
+ if(name==="gateways")loadGateways();
+ if(name==="library")loadLibrary();
+ if(name==="posts")load().catch(()=>{});
  $("#tabHeading").textContent=PAGES[name].title;
  document.title=PAGES[name].title+" · PrivTest";
  renderCrumbs(name);
@@ -660,14 +863,14 @@ $("#scrim").onclick=closeNav;
 $("#acctBtn").onclick=e=>{e.stopPropagation();const m=$("#acctMenu");m.hidden=!m.hidden;$("#acctBtn").setAttribute("aria-expanded",String(!m.hidden))};
 document.addEventListener("click",e=>{if(!e.target.closest(".account")){$("#acctMenu").hidden=true;$("#acctBtn").setAttribute("aria-expanded","false")}});
 $("#omegaModal").addEventListener("click",e=>{if(e.target.id==="omegaModal")closeOmega()});
-document.addEventListener("keydown",e=>{if(e.key==="Escape"){closeOmega();closeNav()}});
+document.addEventListener("keydown",e=>{if(e.key==="Escape"){closeOmega();closeMedia();closePick();closeNav()}});
 
 /* ---------- carregamento ---------- */
 async function load(){
  try{
-  S=await send("GET","/state");
-  try{dashboard=await send("GET","/dashboard")}catch(e){console.warn("Falha ao carregar métricas:",e.message)}
-  try{const subData=await send("GET","/subscriptions");subscriptions=subData.subscriptions||[]}catch(e){console.warn("Falha ao carregar assinaturas:",e.message);subscriptions=[]}
+  S=await send("GET","/state");if(S.maxMb)libMax=S.maxMb;
+  try{dashboard=await send("GET","/dashboard");dashError=""}catch(e){dashboard=null;dashError=e.message||"Erro ao carregar métricas."}
+  try{const subData=await send("GET","/subscriptions");subscriptions=subData.subscriptions||[];subsError=""}catch(e){subscriptions=[];subsError=e.message||"Erro ao carregar assinaturas."}
   view(true);draw();drawSubscriptions();
   return true;
  }catch(e){view(false);throw e}
@@ -689,32 +892,55 @@ $("#settingsOut").onclick=logout;
 /* ---------- publicações ---------- */
 function thumb(m){return m?(m.kind==="video"?`<video src="${m.url}#t=0.1" muted playsinline preload="metadata"></video>`:`<img src="${m.url}" alt="">`):"sem mídia"}
 
-function renderPosts(){
+/* ---------- publicações: lista e paginação ---------- */
+const PAGE_SIZE=10;
+let postPage=0;
+function filteredPosts(){
  const q=($("#postSearch").value||"").trim().toLowerCase(), f=$("#postFilter").value;
- const list=S.posts.filter(p=>(f==="all"||(f==="pub"?p.published:!p.published))&&(!q||String(p.caption||"").toLowerCase().includes(q)));
- if(!list.length){
-  $("#list").innerHTML=`<div class="empty"><div><strong>${S.posts.length?"Nenhum resultado":"Nenhuma publicação ainda"}</strong><p>${S.posts.length?"Ajuste a pesquisa ou o filtro.":"Crie a primeira publicação para começar."}</p></div></div>`;
-  return;
- }
- $("#list").innerHTML=list.map(p=>`
+ return S.posts.filter(p=>{
+  if(f==="pub"&&!p.published)return false;
+  if(f==="draft"&&p.published)return false;
+  if(f==="locked"&&!p.locked)return false;
+  return !q||String(p.caption||"").toLowerCase().includes(q);
+ });
+}
+function postRow(p){
+ const hasMedia=(p.images+p.videos)>0;
+ const pubBlocked=!p.published&&!hasMedia;
+ return `
   <div class="post-row">
    <div class="th">${thumb(p.media[0])}</div>
    <div class="post-body">
     <div class="post-tags">
      <span class="badge ${p.published?"ok":"warn"}">${p.published?"Publicado":"Rascunho"}</span>
-     <span class="badge mute">${p.locked?"Bloqueado":"Aberto"}</span>
+     <span class="badge ${p.locked?"bad":"mute"}">${p.locked?"Bloqueado":"Aberto"}</span>
+     ${hasMedia?"":'<span class="badge warn">Sem mídia</span>'}
      <span class="badge mute">${num(p.images)} fotos · ${num(p.videos)} vídeos</span>
     </div>
     <div class="post-cap">${esc(p.caption)||"<i>sem legenda</i>"}</div>
+    <div class="feed-meta">${dateBR(p.created)}</div>
     <div class="post-actions">
      <button class="btn ghost sm" data-e="${p.id}" type="button">Editar</button>
-     <button class="btn ghost sm" data-t="${p.id}" type="button">${p.published?"Despublicar":"Publicar"}</button>
+     <button class="btn ghost sm" data-t="${p.id}" type="button" ${pubBlocked?'disabled title="Adicione uma imagem ou vídeo para publicar"':""}>${p.published?"Despublicar":"Publicar"}</button>
+     <button class="btn ghost sm" data-l="${p.id}" type="button">${p.locked?"Desbloquear":"Bloquear"}</button>
      <button class="btn danger sm" data-d="${p.id}" type="button">Excluir</button>
     </div>
    </div>
-  </div>`).join("");
+  </div>`;
 }
-
+function renderPosts(){
+ const all=filteredPosts(), pages=Math.max(1,Math.ceil(all.length/PAGE_SIZE));
+ if(postPage>pages-1)postPage=pages-1;
+ if(postPage<0)postPage=0;
+ const slice=all.slice(postPage*PAGE_SIZE,(postPage+1)*PAGE_SIZE);
+ $("#list").innerHTML=all.length
+  ?slice.map(postRow).join("")
+  :`<div class="empty"><div><strong>${S.posts.length?"Nenhum resultado":"Nenhuma publicação ainda"}</strong><p>${S.posts.length?"Ajuste a pesquisa ou o filtro.":"Crie a primeira publicação para começar."}</p></div></div>`;
+ $("#pgInfo").textContent=all.length?`${postPage*PAGE_SIZE+1}–${postPage*PAGE_SIZE+slice.length} de ${all.length}`:"";
+ $("#pgPrev").disabled=postPage<=0;
+ $("#pgNext").disabled=postPage>=pages-1;
+ $("#postPager").hidden=all.length<=PAGE_SIZE;
+}
 function renderOverviewLists(){
  const P=S.posts;
  $("#overviewRecent").innerHTML=P.length
@@ -725,10 +951,12 @@ function renderOverviewLists(){
 function draw(){
  const P=S.posts,pub=P.filter(p=>p.published);
  const imageCount=P.reduce((n,p)=>n+(Number(p.images)||0),0),videoCount=P.reduce((n,p)=>n+(Number(p.videos)||0),0);
- $("#ovVisits").textContent=num(dashboard.visits);
- $("#ovPixGenerated").textContent=num(dashboard.pixGenerated);
- $("#ovPixPaid").textContent=num(dashboard.pixPaid);
- $("#ovRevenue").textContent=money(dashboard.revenue);
+ const d=dashboard;
+ $("#ovVisits").textContent=d?num(d.visits):"—";
+ $("#ovPixGenerated").textContent=d?num(d.pixGenerated):"—";
+ $("#ovPixPaid").textContent=d?num(d.pixPaid):"—";
+ $("#ovRevenue").textContent=d?money(d.revenue):"—";
+ $("#dashErr").textContent=dashError?"Não foi possível carregar as métricas. Atualize a página para tentar de novo.":"";
  $("#kpiPosts").textContent=num(P.length);
  $("#kpiPostsSub").textContent=`${num(pub.length)} publicadas`;
  $("#sum").textContent=`${num(pub.length)} publicadas · ${num(imageCount)} imagens · ${num(videoCount)} vídeos`;
@@ -740,36 +968,179 @@ function draw(){
  updatePreview();
 }
 
-$("#postSearch").addEventListener("input",renderPosts);
-$("#postFilter").addEventListener("change",renderPosts);
+$("#postSearch").addEventListener("input",()=>{postPage=0;renderPosts()});
+$("#postFilter").addEventListener("change",()=>{postPage=0;renderPosts()});
+$("#pgPrev").onclick=()=>{postPage--;renderPosts()};
+$("#pgNext").onclick=()=>{postPage++;renderPosts()};
 
-function reset(){editing=null;$("#pf").reset();$("#lock").checked=true;$("#cur").innerHTML="";$("#ptitle").textContent="Nova publicação";$("#pcancel").hidden=true;$("#perr").textContent=""}
-$("#pcancel").onclick=()=>{reset();activateTab("posts")};
+/* ---------- editor de publicação ---------- */
+const MAX_NEW=30;
+let edItems=[], libPickItems=[];
+function renderItems(){
+ const box=$("#cur");
+ box.innerHTML=edItems.length
+  ?edItems.map((it,i)=>`
+   <div class="mitem">
+    <div class="mthumb">${it.kind==="video"?`<video src="${esc(it.src)}#t=0.1" muted playsinline preload="metadata"></video>`:`<img src="${esc(it.src)}" alt="">`}</div>
+    <div class="mmeta">
+     <div class="mname" title="${esc(it.name)}">${i+1}. ${esc(it.name)||"Sem nome"}</div>
+     <span class="badge ${it.type==="n"?"warn":"mute"}">${it.type==="n"?"Novo envio":"Biblioteca"}</span>
+    </div>
+    <div class="mactions">
+     <button class="btn ghost sm" type="button" data-up="${i}" ${i===0?"disabled":""} aria-label="Mover para cima">↑</button>
+     <button class="btn ghost sm" type="button" data-down="${i}" ${i===edItems.length-1?"disabled":""} aria-label="Mover para baixo">↓</button>
+     <button class="btn danger sm" type="button" data-rm="${i}">Remover</button>
+    </div>
+   </div>`).join("")
+  :'<div class="empty"><div><strong>Nenhuma mídia nesta publicação</strong><p>Adicione da biblioteca ou envie novas mídias.</p></div></div>';
+ renderPreview();
+}
+function renderPreview(){
+ const cap=$("#cap").value.trim(), pubOn=$("#pub").checked, lockOn=$("#lock").checked, first=edItems[0];
+ const media=first?(first.kind==="video"?`<video src="${esc(first.src)}" controls playsinline preload="metadata"></video>`:`<img src="${esc(first.src)}" alt="">`):'<div class="pv-empty">Sem mídia</div>';
+ const strip=edItems.length>1?`<div class="pv-strip">${edItems.slice(1).map(it=>`<div>${it.kind==="video"?`<video src="${esc(it.src)}#t=0.1" muted preload="metadata"></video>`:`<img src="${esc(it.src)}" alt="">`}</div>`).join("")}</div>`:"";
+ $("#pvPost").innerHTML=`
+  <div class="pv-post-media">${media}</div>
+  <div style="padding-top:12px">
+   <div class="post-tags">
+    <span class="badge ${pubOn?"ok":"warn"}">${pubOn?"Será publicado":"Rascunho"}</span>
+    <span class="badge ${lockOn?"bad":"mute"}">${lockOn?"Bloqueado":"Aberto"}</span>
+    <span class="badge mute">${edItems.length} ${edItems.length===1?"mídia":"mídias"}</span>
+   </div>
+   <p class="pv-cap">${cap?esc(cap):"<i>Sem legenda</i>"}</p>
+   ${strip}
+   ${pubOn&&!edItems.length?'<p class="err">Não é possível publicar sem mídia.</p>':""}
+  </div>`;
+}
+function openEditor(p){
+ editing=p;
+ edItems=p.media.map(m=>({type:"m",mid:m.id,kind:m.kind,name:m.name||"",src:m.url}));
+ $("#ptitle").textContent="Editar publicação";
+ $("#cap").value=p.caption||"";
+ $("#lock").checked=!!p.locked;
+ $("#pub").checked=!!p.published;
+ $("#pcancel").hidden=false;
+ $("#psave").textContent="Salvar alterações";
+ $("#perr").textContent="";
+ activateTab("newpost");
+ renderItems();
+ window.scrollTo({top:0,behavior:"smooth"});
+}
+function resetEditor(){
+ edItems.forEach(it=>{if(it.type==="n")URL.revokeObjectURL(it.src)});
+ edItems=[];editing=null;
+ $("#pf").reset();
+ $("#lock").checked=true;
+ $("#ptitle").textContent="Nova publicação";
+ $("#psave").textContent="Salvar";
+ $("#pcancel").hidden=true;
+ $("#perr").textContent="";
+ renderItems();
+}
+$("#pcancel").onclick=()=>{resetEditor();activateTab("posts")};
+["cap","pub","lock"].forEach(id=>$("#"+id).addEventListener("input",renderPreview));
+["cap","pub","lock"].forEach(id=>$("#"+id).addEventListener("change",renderPreview));
 
-$("#list").onclick=async e=>{
- const b=e.target.closest("button");if(!b)return;
- const id=b.dataset.e||b.dataset.t||b.dataset.d,p=S.posts.find(x=>x.id==id);
- try{
-  if(b.dataset.e){
-   activateTab("newpost");editing=p;$("#ptitle").textContent="Editar publicação";$("#cap").value=p.caption;$("#lock").checked=p.locked;$("#pub").checked=p.published;$("#pcancel").hidden=false;
-   $("#cur").innerHTML=p.media.map(m=>`<div style="width:76px"><div class="th" style="width:76px;height:76px;border-radius:10px;overflow:hidden;background:var(--surf3);border:1px solid var(--line);display:grid;place-items:center">${thumb(m)}</div><label style="display:flex;gap:4px;align-items:center;font-size:11px;margin-top:6px;color:var(--muted)"><input type="checkbox" value="${m.id}" style="width:auto"> remover</label></div>`).join("");
-   window.scrollTo({top:0,behavior:"smooth"});
-  }
-  else if(b.dataset.t){await send("PUT","/posts/"+id,{published:p.published?"0":"1"});await load()}
-  else if(b.dataset.d&&confirm("Excluir esta publicação e todos os arquivos dela? Não dá para desfazer.")){await send("DELETE","/posts/"+id);if(editing?.id==id)reset();await load()}
- }catch(err){alert(err.message)}
+$("#files").addEventListener("change",()=>{
+ const input=$("#files"), picked=[...input.files];
+ input.value="";
+ const rejected=[];
+ for(const f of picked){
+  const novos=edItems.filter(i=>i.type==="n").length;
+  if(!MEDIA_ACCEPT.includes(f.type))rejected.push(`${f.name}: formato não suportado`);
+  else if(f.size>libMax*1048576)rejected.push(`${f.name}: maior que ${libMax} MB`);
+  else if(novos>=MAX_NEW)rejected.push(`${f.name}: limite de ${MAX_NEW} novos arquivos por vez`);
+  else edItems.push({type:"n",file:f,kind:f.type.startsWith("video/")?"video":"image",name:f.name,src:URL.createObjectURL(f)});
+ }
+ $("#perr").textContent=rejected.join(" · ");
+ renderItems();
+});
+
+$("#cur").addEventListener("click",e=>{
+ const up=e.target.closest("[data-up]"), down=e.target.closest("[data-down]"), rm=e.target.closest("[data-rm]");
+ const move=(i,j)=>{[edItems[i],edItems[j]]=[edItems[j],edItems[i]];renderItems()};
+ if(up){const i=+up.dataset.up;if(i>0)move(i,i-1)}
+ else if(down){const i=+down.dataset.down;if(i<edItems.length-1)move(i,i+1)}
+ else if(rm){const [gone]=edItems.splice(+rm.dataset.rm,1);if(gone&&gone.type==="n")URL.revokeObjectURL(gone.src);renderItems()}
+});
+
+/* escolher mídias da biblioteca */
+function updatePickBtn(){const n=$("#pickList").querySelectorAll("input:checked").length;$("#pickAdd").disabled=!n;$("#pickAdd").textContent=n?`Adicionar (${n})`:"Adicionar"}
+function renderPick(){
+ const inEditor=new Set(edItems.filter(i=>i.type==="m").map(i=>i.mid));
+ const available=libPickItems.filter(m=>!inEditor.has(m.id));
+ if(!libPickItems.length){$("#pickList").innerHTML='<div class="empty" style="grid-column:1/-1"><div><strong>Biblioteca vazia</strong><p>Envie mídias na aba Biblioteca de mídias.</p></div></div>';updatePickBtn();return}
+ if(!available.length){$("#pickList").innerHTML='<div class="empty" style="grid-column:1/-1"><div><strong>Todas as mídias já estão nesta publicação</strong></div></div>';updatePickBtn();return}
+ $("#pickList").innerHTML=available.map(m=>`
+  <label class="pick-item">
+   <input type="checkbox" value="${m.id}" aria-label="Selecionar ${esc(m.name)||"mídia"}">
+   <div class="media-thumb">${m.kind==="video"?`<video src="${esc(m.url)}#t=0.1" muted playsinline preload="metadata"></video>`:`<img src="${esc(m.url)}" alt="" loading="lazy">`}</div>
+   <div class="media-meta">${esc(m.name)||"Sem nome"}<br>${m.kind==="video"?"Vídeo":"Imagem"}${m.inUse?" · em uso":""}</div>
+  </label>`).join("");
+ updatePickBtn();
+}
+async function openPick(){
+ $("#pickList").innerHTML='<p class="hint" style="grid-column:1/-1">Carregando biblioteca…</p>';
+ $("#pickAdd").disabled=true;
+ $("#pickModal").hidden=false;
+ try{const r=await send("GET","/media");libPickItems=r.items||[];renderPick()}
+ catch(e){$("#pickList").innerHTML=`<div style="grid-column:1/-1">${errBlock(e.message)}</div>`}
+}
+function closePick(){$("#pickModal").hidden=true}
+$("#pickLib").onclick=openPick;
+$("#pickCancel").onclick=closePick;
+$("#pickModal").addEventListener("click",e=>{if(e.target.id==="pickModal")closePick()});
+$("#pickList").addEventListener("change",updatePickBtn);
+$("#pickAdd").onclick=()=>{
+ [...$("#pickList").querySelectorAll("input:checked")].map(c=>Number(c.value)).forEach(id=>{
+  const m=libPickItems.find(x=>x.id===id);
+  if(m&&!edItems.some(i=>i.type==="m"&&i.mid===id))edItems.push({type:"m",mid:id,kind:m.kind,name:m.name||"",src:m.url});
+ });
+ closePick();
+ renderItems();
 };
 
 $("#pf").onsubmit=async e=>{
- e.preventDefault();$("#perr").textContent="";
+ e.preventDefault();
+ $("#perr").textContent="";
+ const pubOn=$("#pub").checked;
+ if(pubOn&&!edItems.length){$("#perr").textContent="Adicione ao menos uma imagem ou vídeo para publicar.";return}
  const f=new FormData();
- f.append("caption",$("#cap").value);f.append("locked",$("#lock").checked?"1":"0");f.append("published",$("#pub").checked?"1":"0");
- [...$("#files").files].forEach(x=>f.append("files",x));
- [...$("#cur").querySelectorAll("input:checked")].forEach(c=>f.append("remove",c.value));
+ f.append("caption",$("#cap").value);
+ f.append("locked",$("#lock").checked?"1":"0");
+ f.append("published",pubOn?"1":"0");
+ const order=[];let novo=0;
+ for(const it of edItems){
+  if(it.type==="m")order.push("m"+it.mid);
+  else{order.push("n"+novo);f.append("files",it.file,it.name);novo++}
+ }
+ f.append("order",JSON.stringify(order));
  const bar=$("#bar");bar.hidden=false;bar.value=0;$("#psave").disabled=true;
- try{await send(editing?"PUT":"POST",editing?"/posts/"+editing.id:"/posts",f,v=>bar.value=v);reset();await load();activateTab("posts")}
- catch(err){$("#perr").textContent=err.message}
+ try{
+  if(editing)await send("PUT","/posts/"+editing.id,f,v=>bar.value=v);
+  else await send("POST","/posts",f,v=>bar.value=v);
+  resetEditor();
+  await load();
+  activateTab("posts");
+ }catch(err){$("#perr").textContent=err.message}
  finally{bar.hidden=true;$("#psave").disabled=false}
+};
+
+$("#list").onclick=async e=>{
+ const b=e.target.closest("button");if(!b||b.disabled)return;
+ const id=b.dataset.e||b.dataset.t||b.dataset.l||b.dataset.d;
+ const p=S.posts.find(x=>String(x.id)===String(id));if(!p)return;
+ try{
+  if(b.dataset.e){openEditor(p)}
+  else if(b.dataset.t){await send("PUT","/posts/"+p.id,{published:p.published?"0":"1"});await load()}
+  else if(b.dataset.l){await send("PUT","/posts/"+p.id,{locked:p.locked?"0":"1"});await load()}
+  else if(b.dataset.d){
+   if(!confirm("Excluir esta publicação?\n\nAs mídias que existem somente nesta publicação serão apagadas do servidor. Mídias que também estão em outras publicações são mantidas."))return;
+   await send("DELETE","/posts/"+p.id);
+   if(editing&&editing.id===p.id)resetEditor();
+   await load();
+  }
+ }catch(err){alert(err.message)}
 };
 
 /* ---------- perfil ---------- */
@@ -778,12 +1149,16 @@ function updatePreview(){
  $("#pvName").textContent=name||"Seu nome";
  $("#pvHandle").textContent=handle||"@usuario";
  $("#pvBio").textContent=bio;
- $("#pvAv").textContent=(name||"?")[0].toUpperCase();
+ const av=S.profile?.avatar, cv=S.profile?.cover;
+ $("#pvAv").textContent=av?"":(name||"?")[0].toUpperCase();
+ $("#pvAv").style.background=av?`url("/media/${encodeURIComponent(av)}") center/cover`:"";
+ $("#pvCover").style.background=cv?`url("/media/${encodeURIComponent(cv)}") center/cover`:"";
 }
 ["nm","hd","bio"].forEach(id=>$("#"+id).addEventListener("input",updatePreview));
 
 $("#prf").onsubmit=async e=>{
  e.preventDefault();$("#rerr").textContent="";$("#rerr").className="err";
+ const btn=$("#prSave");btn.disabled=true;btn.textContent="Salvando…";
  const f=new FormData();
  f.append("name",$("#nm").value);f.append("handle",$("#hd").value);f.append("bio",$("#bio").value);
  f.append("price1",$("#p1").value);f.append("price3",$("#p3").value);f.append("price6",$("#p6").value);
@@ -791,11 +1166,18 @@ $("#prf").onsubmit=async e=>{
  if($("#cv").files[0])f.append("cover",$("#cv").files[0]);
  try{await send("PUT","/profile",f);$("#av").value="";$("#cv").value="";await load();$("#rerr").textContent="Perfil salvo.";$("#rerr").className="err ok-msg"}
  catch(err){$("#rerr").textContent=err.message}
+ finally{btn.disabled=false;btn.textContent="Salvar perfil"}
 };
 
 /* ---------- assinantes ---------- */
 function drawSubscriptions(){
  const root=$("#subscriptionsList"), recent=$("#recentTx");
+ if(subsError){
+  $("#kpiSubs").textContent="—";
+  root.innerHTML=errBlock(subsError);
+  recent.innerHTML=errBlock(subsError);
+  return;
+ }
  const active=subscriptions.filter(s=>s.status==="ACTIVE").length;
  $("#kpiSubs").textContent=num(active);
  const statusLabel={ACTIVE:["Ativa","ok"],EXPIRED:["Expirada","mute"],REVOKED:["Revogada","bad"]};
@@ -847,7 +1229,11 @@ $('#gwform').onsubmit=async e=>{
 
 /* ---------- início ---------- */
 activateTab("dashboard");
-load().catch(()=>{});
+(async()=>{
+ try{await load()}
+ catch(e){view(false);if(!/Sessão expirada/.test(e.message))$("#lerr").textContent=e.message}
+ finally{$("#boot").hidden=true}
+})();
 </script>
 </body>
 </html>
