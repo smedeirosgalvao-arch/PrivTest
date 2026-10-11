@@ -329,15 +329,22 @@ app.post('/api/admin/mock-posts', guard, (req, res) => {
   const now = Date.now();
   const insert = db.prepare('INSERT INTO posts(caption,published,locked,created,updated,fake_images,fake_videos) VALUES(?,1,1,?,?,?,?)');
   const captions = ['Prévia de conteúdo exclusivo','Novidades para assinantes','Um pouco do que vem por aí','Conteúdo especial','Atualização do perfil'];
-  const make = db.transaction(() => {
+  // DatabaseSync do node:sqlite não oferece db.transaction(); usar SQL explícito.
+  let created = 0;
+  db.exec('BEGIN IMMEDIATE');
+  try {
     for (let i=0;i<count;i++) {
       const images = 1 + Math.floor(Math.random()*4);
       const videos = Math.floor(Math.random()*3);
       insert.run('[DEMONSTRAÇÃO] ' + captions[i%captions.length], now-i, now-i, images, videos);
+      created++;
     }
-  });
-  make();
-  res.json({ok:true,created:count});
+    db.exec('COMMIT');
+  } catch (e) {
+    try { db.exec('ROLLBACK'); } catch {}
+    throw e;
+  }
+  res.json({ok:true,created});
 });
 
 app.post('/api/admin/posts', guard, upload.array('files'), (req, res) => {
