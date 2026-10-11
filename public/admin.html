@@ -381,12 +381,13 @@ progress{width:100%;height:6px;accent-color:var(--accent);margin-top:12px}
 
         <div class="two-col">
           <div class="card">
-            <div class="card-head"><div><h2>Vendas</h2><p>Evolução do faturamento no período</p></div></div>
-            <div class="chart"><p>O gráfico de vendas aparece aqui quando houver histórico de pagamentos confirmados.</p></div>
+            <div class="card-head"><div><h2>Vendas</h2><p>Faturamento diário de pagamentos confirmados</p></div></div>
+            <div class="chart" id="salesChart" role="img" aria-label="Gráfico de vendas">Carregando…</div>
           </div>
           <div class="card">
-            <div class="card-head"><div><h2>Visitas</h2><p>Acessos à página pública</p></div></div>
-            <div class="chart"><p>O gráfico de visitas aparece aqui quando houver histórico de acessos.</p></div>
+            <div class="card-head"><div><h2>Visitas</h2><p>Acessos diários à página pública</p></div></div>
+            <div class="chart" id="visitsChart" role="img" aria-label="Gráfico de visitas">Carregando…</div>
+            <div class="btns" style="margin-top:10px"><button class="btn ghost sm" type="button" data-stats-days="7">7 dias</button><button class="btn ghost sm" type="button" data-stats-days="30">30 dias</button></div>
           </div>
         </div>
 
@@ -696,7 +697,7 @@ const num=v=>Number(v||0).toLocaleString("pt-BR");
 const money=v=>Number(v||0).toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
 const dateBR=v=>v?new Date(Number(v)).toLocaleString("pt-BR",{dateStyle:"short",timeStyle:"short"}):"—";
 
-let S={posts:[],profile:{}}, editing=null, dashboard=null, dashError="", subscriptions=[], subsError="", payments=[], paymentsError="", paymentsStatus="ALL", paymentsOffset=0, paymentsTotal=0, paymentsSummary={total:0,paid:0,pending:0,revenue:0};
+let S={posts:[],profile:{}}, editing=null, dashboard=null, statsDays=7, dashError="", subscriptions=[], subsError="", payments=[], paymentsError="", paymentsStatus="ALL", paymentsOffset=0, paymentsTotal=0, paymentsSummary={total:0,paid:0,pending:0,revenue:0};
 const errBlock=msg=>`<div class="empty"><div><strong>Não foi possível carregar</strong><p>${esc(msg)}</p></div></div>`;
 
 function send(method,path,body,onp){return new Promise((ok,fail)=>{
@@ -883,7 +884,7 @@ document.addEventListener("keydown",e=>{if(e.key==="Escape"){closeOmega();closeM
 async function load(){
  try{
   S=await send("GET","/state");if(S.maxMb)libMax=S.maxMb;
-  try{dashboard=await send("GET","/dashboard");dashError=""}catch(e){dashboard=null;dashError=e.message||"Erro ao carregar métricas."}
+  try{dashboard=await send("GET","/dashboard?days="+statsDays);dashError=""}catch(e){dashboard=null;dashError=e.message||"Erro ao carregar métricas."}
   try{const subData=await send("GET","/subscriptions");subscriptions=subData.subscriptions||[];subsError=""}catch(e){subscriptions=[];subsError=e.message||"Erro ao carregar assinaturas."}
   try{await loadPayments()}catch(e){payments=[];paymentsError=e.message||"Erro ao carregar pagamentos."}
   view(true);draw();drawSubscriptions();drawPayments();
@@ -963,6 +964,27 @@ function renderOverviewLists(){
   :`<div class="empty"><div><strong>Nenhuma publicação</strong><p>Crie a primeira para começar.</p></div></div>`;
 }
 
+function drawStatsCharts(){
+ document.querySelectorAll("[data-stats-days]").forEach(b=>{const active=Number(b.dataset.statsDays)===statsDays;b.classList.toggle("active",active);b.setAttribute("aria-pressed",String(active))});
+ const rows=dashboard?.series||[];
+ const render=(id,key,format)=>{
+  const root=$("#"+id);if(!root)return;
+  const vals=rows.map(r=>Number(r[key])||0), max=Math.max(1,...vals);
+  if(!rows.length){root.innerHTML="<p>Sem dados para exibir.</p>";return}
+  if(!vals.some(v=>v>0)){root.innerHTML="<p>"+(key==="revenue"?"Nenhum pagamento confirmado neste período.":"Nenhuma visita registrada neste período.")+"</p>";return}
+  const barW= Math.min(28, 620/rows.length*0.62), step=620/rows.length;
+  const bars=rows.map((r,i)=>{const v=Number(r[key])||0,h=Math.max(v?2:0,(v/max)*130),x=42+i*step+(step-barW)/2,y=158-h;const label=(i%Math.ceil(rows.length/7)===0||i===rows.length-1)?r.date.slice(5):"";return '<g><title>'+esc(r.date)+': '+esc(format(v))+'</title><rect x="'+x.toFixed(1)+'" y="'+y.toFixed(1)+'" width="'+barW.toFixed(1)+'" height="'+h.toFixed(1)+'" rx="2" fill="currentColor" opacity=".8"/><text x="'+(x+barW/2).toFixed(1)+'" y="180" text-anchor="middle" font-size="9" fill="currentColor">'+label+'</text></g>'}).join("");
+  root.innerHTML='<svg viewBox="0 0 700 200" width="100%" height="200" aria-hidden="true"><line x1="36" y1="158" x2="670" y2="158" stroke="currentColor" opacity=".2"/>'+bars+'</svg><p class="hint">'+(key==="revenue"?"Valores em reais (R$).":"Quantidade de acessos.")+'</p>';
+ };
+ render("salesChart","revenue",v=>money(v));
+ render("visitsChart","visits",v=>num(v));
+}
+document.querySelectorAll("[data-stats-days]").forEach(b=>b.addEventListener("click",async()=>{
+ statsDays=Number(b.dataset.statsDays)===30?30:7;
+ $("#salesChart").textContent="Carregando…";$("#visitsChart").textContent="Carregando…";
+ try{dashboard=await send("GET","/dashboard?days="+statsDays);dashError="";drawStatsCharts()}
+ catch(e){dashError=e.message||"Erro ao carregar métricas.";$("#dashErr").textContent="Não foi possível carregar as métricas."}
+}));
 function draw(){
  const P=S.posts,pub=P.filter(p=>p.published);
  const imageCount=P.reduce((n,p)=>n+(Number(p.images)||0),0),videoCount=P.reduce((n,p)=>n+(Number(p.videos)||0),0);
@@ -972,6 +994,7 @@ function draw(){
  $("#ovPixPaid").textContent=d?num(d.pixPaid):"—";
  $("#ovRevenue").textContent=d?money(d.revenue):"—";
  $("#dashErr").textContent=dashError?"Não foi possível carregar as métricas. Atualize a página para tentar de novo.":"";
+ drawStatsCharts();
  $("#kpiPosts").textContent=num(P.length);
  $("#kpiPostsSub").textContent=`${num(pub.length)} publicadas`;
  $("#sum").textContent=`${num(pub.length)} publicadas · ${num(imageCount)} imagens · ${num(videoCount)} vídeos`;
