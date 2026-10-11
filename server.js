@@ -394,7 +394,33 @@ app.get('/api/admin/dashboard', guard, (req, res) => {
   const visits = db.prepare('SELECT COUNT(*) AS n FROM site_visits').get().n;
   const pix = db.prepare('SELECT COUNT(*) AS total, SUM(CASE WHEN status=\'COMPLETED\' THEN 1 ELSE 0 END) AS paid, COALESCE(SUM(CASE WHEN status=\'COMPLETED\' THEN amount ELSE 0 END),0) AS revenue FROM pix_transactions').get();
   res.set('Cache-Control', 'no-store');
-  res.json({ visits, pixGenerated: pix.total || 0, pixPaid: pix.paid || 0, revenue: pix.revenue || 0, series: [] });
+  const days = Number(req.query.days) === 30 ? 30 : 7;
+  const series = [];
+  const start = new Date();
+  start.setUTCHours(0, 0, 0, 0);
+  start.setUTCDate(start.getUTCDate() - days + 1);
+  for (let i = 0; i < days; i++) {
+    const d = new Date(start.getTime() + i * 86400000);
+    series.push({ date: d.toISOString().slice(0, 10), visits: 0, pixGenerated: 0, pixPaid: 0, revenue: 0 });
+  }
+  const daily = new Map(series.map(x => [x.date, x]));
+  const cutoff = start.getTime();
+  for (const row of db.prepare('SELECT visited_at FROM site_visits WHERE visited_at >= ?').all(cutoff)) {
+    const day = new Date(Number(row.visited_at)).toISOString().slice(0, 10);
+    if (daily.has(day)) daily.get(day).visits++;
+  }
+  for (const row of db.prepare("SELECT created, updated, amount, status FROM pix_transactions WHERE created >= ? OR (status='COMPLETED' AND updated >= ?)").all(cutoff, cutoff)) {
+    const createdDay = new Date(Number(row.created)).toISOString().slice(0, 10);
+    if (daily.has(createdDay)) daily.get(createdDay).pixGenerated++;
+    if (row.status === 'COMPLETED') {
+      const paidDay = new Date(Number(row.updated)).toISOString().slice(0, 10);
+      if (daily.has(paidDay)) {
+        daily.get(paidDay).pixPaid++;
+        daily.get(paidDay).revenue += Number(row.amount) || 0;
+      }
+    }
+  }
+  res.json({ visits, pixGenerated: pix.total || 0, pixPaid: pix.paid || 0, revenue: pix.revenue || 0, days, series });
 });
 
 app.post('/api/admin/mock-posts', guard, (req, res) => {
