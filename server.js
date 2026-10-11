@@ -21,9 +21,14 @@ CREATE TABLE IF NOT EXISTS sessions(token TEXT PRIMARY KEY, expires INTEGER);
 CREATE TABLE IF NOT EXISTS settings(k TEXT PRIMARY KEY, v TEXT);
 CREATE TABLE IF NOT EXISTS posts(id INTEGER PRIMARY KEY, caption TEXT DEFAULT '', published INTEGER DEFAULT 0, locked INTEGER DEFAULT 1, created INTEGER, updated INTEGER);
 CREATE TABLE IF NOT EXISTS media(id INTEGER PRIMARY KEY, post_id INTEGER REFERENCES posts(id) ON DELETE CASCADE, kind TEXT, file TEXT UNIQUE, mime TEXT, size INTEGER, pos INTEGER DEFAULT 0);
-CREATE TABLE IF NOT EXISTS pix_transactions(identifier TEXT PRIMARY KEY, transaction_id TEXT, amount REAL NOT NULL, status TEXT NOT NULL, client_email TEXT, pix_code TEXT, pix_image TEXT, webhook_token TEXT, created INTEGER NOT NULL, updated INTEGER NOT NULL);
+CREATE TABLE IF NOT EXISTS pix_transactions(identifier TEXT PRIMARY KEY, transaction_id TEXT, amount REAL NOT NULL, status TEXT NOT NULL, client_email TEXT, pix_code TEXT, pix_image TEXT, webhook_token TEXT, created INTEGER NOT NULL, updated INTEGER NOT NULL, plan TEXT NOT NULL DEFAULT '1');
+CREATE TABLE IF NOT EXISTS subscriptions(id INTEGER PRIMARY KEY, client_email TEXT NOT NULL, plan TEXT NOT NULL, starts_at INTEGER NOT NULL, expires_at INTEGER NOT NULL, status TEXT NOT NULL DEFAULT 'ACTIVE', pix_identifier TEXT NOT NULL UNIQUE, created INTEGER NOT NULL);
+CREATE INDEX IF NOT EXISTS subscriptions_email_status ON subscriptions(client_email,status,expires_at);
 CREATE TABLE IF NOT EXISTS webhook_events(event_key TEXT PRIMARY KEY, event TEXT NOT NULL, received INTEGER NOT NULL);
 CREATE TABLE IF NOT EXISTS site_visits(id INTEGER PRIMARY KEY, visited_at INTEGER NOT NULL);`);
+
+// Migração segura para bancos já existentes no Railway.
+try { db.exec("ALTER TABLE pix_transactions ADD COLUMN plan TEXT NOT NULL DEFAULT '1'"); } catch (e) { if (!String(e.message).includes('duplicate column name')) throw e; }
 
 // ---------- autenticaÃ§Ã£o ----------
 const hashPw = (p, s) => crypto.scryptSync(p, s, 64).toString('hex');
@@ -232,8 +237,8 @@ app.post('/api/pix/create', async (req,res) => {
       return res.status(502).json({error:r.status===401||r.status===403?'A OmegaPayments recusou as credenciais. Confira as chaves do gateway.':r.status===400?'A OmegaPayments rejeitou os dados da cobrança. Confira a configuração do gateway.':'A OmegaPayments não retornou o código Pix esperado. Confira as chaves e tente novamente.'});
     }
     const now=Date.now();
-    db.prepare('INSERT INTO pix_transactions(identifier,transaction_id,amount,status,client_email,pix_code,pix_image,webhook_token,created,updated) VALUES(?,?,?,?,?,?,?,?,?,?)')
-      .run(identifier,String(transactionId),amount,status,buyerEmail,String(pixCode),String(pixImage||''),String(root?.webhookToken||data?.webhookToken||cfg.webhookToken),now,now);
+    db.prepare('INSERT INTO pix_transactions(identifier,transaction_id,amount,status,client_email,pix_code,pix_image,webhook_token,created,updated,plan) VALUES(?,?,?,?,?,?,?,?,?,?,?)')
+      .run(identifier,String(transactionId),amount,status,buyerEmail,String(pixCode),String(pixImage||''),String(root?.webhookToken||data?.webhookToken||cfg.webhookToken),now,now,String(plan));
     let qrImage=pixImage?String(pixImage):null;
     if(!qrImage) {
       try { qrImage=await QRCode.toDataURL(String(pixCode),{width:320,margin:2,errorCorrectionLevel:'M'}); }
@@ -270,11 +275,21 @@ function handleOmegaWebhook(req,res) {
   const now=Date.now();
   const insert=db.prepare('INSERT INTO webhook_events(event_key,event,received) VALUES(?,?,?)');
   const update=db.prepare('UPDATE pix_transactions SET status=?,updated=? WHERE identifier=?');
+  const activate = db.prepare("INSERT INTO subscriptions(client_email,plan,starts_at,expires_at,status,pix_identifier,created) VALUES(?,?,?,?, 'ACTIVE',?,?) ON CONFLICT(pix_identifier) DO UPDATE SET client_email=excluded.client_email,plan=excluded.plan,expires_at=excluded.expires_at,status='ACTIVE'");
   // node:sqlite DatabaseSync não possui db.transaction(); use transação SQL explícita.
   try {
     db.exec('BEGIN IMMEDIATE');
     insert.run(eventKey,event,now);
     update.run(status,now,identifier);
+    if (status === 'COMPLETED' && tx.client_email) {
+      const months = Math.max(1, Math.min(6, Number(tx.plan) || 1));
+      const existing = db.prepare("SELECT MAX(expires_at) AS expires_at FROM subscriptions WHERE client_email=? AND status='ACTIVE' AND expires_at>?").get(tx.client_email,now)?.expires_at;
+      const startsAt = Math.max(now, Number(existing)||0);
+      const expiresAt = new Date(startsAt).setMonth(new Date(startsAt).getMonth()+months);
+      activate.run(tx.client_email, String(months), startsAt, expiresAt, identifier, now);
+    } else if (['REFUNDED','CHARGED_BACK'].includes(status)) {
+      db.prepare("UPDATE subscriptions SET status='REVOKED' WHERE pix_identifier=?").run(identifier);
+    }
     db.exec('COMMIT');
   } catch (err) {
     try { db.exec('ROLLBACK'); } catch {}
