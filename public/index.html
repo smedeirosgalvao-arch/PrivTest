@@ -142,9 +142,11 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--orange);outline-off
   <form id="checkoutForm">
    <label for="buyerName">Nome</label><input id="buyerName" name="name" autocomplete="name" required minlength="2" maxlength="120" placeholder="Seu nome">
    <label for="buyerEmail">E-mail</label><input id="buyerEmail" name="email" type="email" autocomplete="email" required maxlength="180" placeholder="voce@email.com">
+   <label for="buyerPassword">Crie uma senha</label><input id="buyerPassword" name="password" type="password" autocomplete="new-password" required minlength="8" maxlength="200" placeholder="Mínimo de 8 caracteres">
+   <label for="buyerPasswordConfirm">Confirme a senha</label><input id="buyerPasswordConfirm" name="passwordConfirm" type="password" autocomplete="new-password" required minlength="8" maxlength="200" placeholder="Digite a senha novamente">
    <label for="buyerPhone">Telefone com DDD</label><input id="buyerPhone" name="phone" type="tel" autocomplete="tel" required maxlength="30" placeholder="(79) 99999-9999">
    <label for="buyerDocument">CPF ou CNPJ</label><input id="buyerDocument" name="document" inputmode="numeric" autocomplete="off" required maxlength="30" placeholder="Somente números">
-   <p>Não é necessário criar uma conta no site. Nome, e-mail, telefone e CPF/CNPJ são enviados ao provedor para gerar a cobrança.</p>
+   <p>Crie sua conta durante a compra. Use uma senha com pelo menos 8 caracteres. Sua assinatura e o conteúdo exclusivo só serão liberados após a confirmação do Pix.</p>
    <p class="checkout-error" id="checkoutError" role="alert"></p>
    <div class="checkout-actions"><button class="secondary" type="button" id="checkoutCancel">Cancelar</button><button class="primary" type="submit" id="checkoutSubmit">Gerar Pix</button></div>
   </form>
@@ -246,7 +248,7 @@ document.addEventListener("keydown",e=>{if(e.key==="Escape")closeCheckout()});
 $("#checkoutForm").addEventListener("submit",async e=>{
  e.preventDefault();const submit=$("#checkoutSubmit"),error=$("#checkoutError");error.textContent="";submit.disabled=true;submit.textContent="Gerando…";
  try{
-  const response=await fetch("/api/pix/create",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({name:$("#buyerName").value.trim(),email:$("#buyerEmail").value.trim(),phone:$("#buyerPhone").value.trim(),document:$("#buyerDocument").value.replace(/\D/g,""),plan:selectedPlan})});
+  const response=await fetch("/api/pix/create",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({name:$("#buyerName").value.trim(),email:$("#buyerEmail").value.trim(),password:$("#buyerPassword").value,passwordConfirm:$("#buyerPasswordConfirm").value,phone:$("#buyerPhone").value.trim(),document:$("#buyerDocument").value.replace(/\D/g,""),plan:selectedPlan})});
   const data=await response.json().catch(()=>({}));if(!response.ok||!data.ok)throw new Error(data.error||"Não foi possível gerar o Pix.");
   $("#checkoutForm").hidden=true;$("#pixResult").classList.add("show");$("#pixCode").value=data.pix.code||"";
   const img=$("#pixImage"),qr=$("#pixQrFallback");qr.innerHTML="";qr.hidden=true;if(data.pix.image){img.src=data.pix.image;img.hidden=false}else{img.hidden=true;img.removeAttribute("src");if(data.pix.code){qr.hidden=false;if(window.QRCode){new QRCode(qr,{text:data.pix.code,width:220,height:220,colorDark:"#000000",colorLight:"#ffffff",correctLevel:QRCode.CorrectLevel.M});}else{const fallback=document.createElement("img");fallback.alt="QR Code Pix";fallback.width=220;fallback.height=220;fallback.style.cssText="display:block;width:220px;height:220px;object-fit:contain";fallback.onerror=()=>{if(fallback.dataset.retry!=="1"){fallback.dataset.retry="1";fallback.src="https://quickchart.io/qr?text="+encodeURIComponent(data.pix.code)+"&size=220";}else{qr.innerHTML="Não foi possível carregar a imagem do QR Code. Use o botão Copiar código Pix.";}};fallback.src="https://api.qrserver.com/v1/create-qr-code/?size=220x220&data="+encodeURIComponent(data.pix.code);qr.appendChild(fallback);}}}
