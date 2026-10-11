@@ -509,6 +509,18 @@ app.put('/api/admin/profile', guard, upload.fields([{ name: 'avatar', maxCount: 
     const saved = {};
     for (const k of ['avatar', 'cover']) if (req.files?.[k]?.[0]) saved[k] = store([req.files[k][0]], 'image')[0].file;
     for (const k of ['name', 'handle', 'bio']) if (typeof b[k] === 'string') p[k] = b[k].slice(0, k === 'bio' ? 600 : 80);
+    // Links sociais são opcionais; aceitar somente URLs absolutas HTTP(S).
+    for (const k of ['instagram', 'x', 'tiktok', 'telegram']) {
+      if (typeof b[k] !== 'string') continue;
+      const value = b[k].trim().slice(0, 500);
+      if (!value) { p[k] = ''; continue; }
+      let u;
+      try { u = new URL(value); } catch { return res.status(400).json({ error: 'Informe links sociais válidos usando http ou https.' }); }
+      if (!['https:', 'http:'].includes(u.protocol) || !u.hostname || u.username || u.password) {
+        return res.status(400).json({ error: 'Informe links sociais válidos usando http ou https.' });
+      }
+      p[k] = u.href;
+    }
     for (const k of ['price1', 'price3', 'price6']) if (b[k] !== undefined && b[k] !== '' && isFinite(+b[k]) && +b[k] >= 0) p[k] = +b[k];
     if (b.likes !== undefined && b.likes !== '' && Number.isInteger(+b.likes) && +b.likes >= 0) p.likes = +b.likes;
     for (const k in saved) { rm(p[k]); p[k] = saved[k]; }
