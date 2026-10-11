@@ -271,7 +271,7 @@ $("#checkoutForm").addEventListener("submit",async e=>{
         if(memberResponse.ok&&memberData.ok){
          clearInterval(pixPollTimer);
          demo.posts=memberData.posts||[];demo.counts.locked=0;
-         $("#memberLoginOpen").hidden=true;$("#memberLogout").hidden=false;
+
          render();$("#pixStatus").textContent="Pix confirmado! Você já está conectado e seu conteúdo foi liberado.";
          closeCheckout();toast("Assinatura ativada! Você já está conectado.");
         }else{
