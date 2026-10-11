@@ -263,10 +263,14 @@ app.post('/api/pix/create', async (req,res) => {
   // O provedor exige vencimento em data futura, telefone e documento do cliente.
   // Use uma data UTC futura com margem para evitar falha quando a data local virar.
   const dueDate=new Date(Date.now()+48*60*60*1000).toISOString().slice(0,10);
-  const normalizedPhone=String(phone||'').trim();
-  const normalizedDocument=String(document||'').trim();
+  // A OmegaPayments valida telefone em formato internacional E.164.
+  const phoneDigits=String(phone||'').replace(/\D/g,'');
+  const normalizedPhone=phoneDigits.startsWith('55')&&(phoneDigits.length===12||phoneDigits.length===13)
+    ? '+'+phoneDigits
+    : (phoneDigits.length===10||phoneDigits.length===11 ? '+55'+phoneDigits : '');
+  const normalizedDocument=String(document||'').replace(/\D/g,'');
   if (!normalizedPhone || !normalizedDocument) {
-    return res.status(400).json({error:'Para gerar o Pix, informe telefone e CPF/CNPJ.'});
+    return res.status(400).json({error:'Informe um telefone brasileiro válido com DDD e um CPF/CNPJ válido.'});
   }
   const payload={
     identifier,amount,callbackUrl,dueDate,
