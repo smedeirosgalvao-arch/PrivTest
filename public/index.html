@@ -278,7 +278,9 @@ $("#checkoutForm").addEventListener("submit",async e=>{
          $("#pixStatus").textContent="Pix confirmado, mas o servidor não liberou o acesso ("+memberResponse.status+"). Tentando novamente…";
         }
        }catch(accessError){
-        $("#pixStatus").textContent="Pix confirmado, mas houve erro ao entrar. Tentando novamente…";
+        console.error("Falha ao liberar acesso após confirmação do Pix:",accessError);
+        const reason=accessError&&accessError.message?String(accessError.message).slice(0,120):"falha de conexão";
+        $("#pixStatus").textContent="Pix confirmado, mas não consegui conectar ao servidor para entrar ("+reason+"). Tentando novamente…";
        }
       
      }else if(["CANCELED","REFUNDED","CHARGED_BACK","FAILED"].includes(state.status)){
