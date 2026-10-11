@@ -197,7 +197,8 @@ app.post('/api/account/login',(req,res)=>{
   const email=String(req.body?.email||'').trim().toLowerCase(), password=String(req.body?.password||'');
   const a=db.prepare('SELECT * FROM customer_accounts WHERE email=? COLLATE NOCASE').get(email);
   const hash=hashPw(password,a?.salt||'0');
-  if(!a||!crypto.timingSafeEqual(Buffer.from(hash,'hex'),Buffer.from(a.password_hash,'hex')))return res.status(401).json({error:'E-mail ou senha incorretos.'});
+  if(!a)return res.status(401).json({error:'Não existe uma conta com esse e-mail. Confira o e-mail usado no primeiro cadastro.'});
+  if(!crypto.timingSafeEqual(Buffer.from(hash,'hex'),Buffer.from(a.password_hash,'hex')))return res.status(401).json({error:'Senha incorreta. Use a senha cadastrada na primeira vez que gerou um Pix para esse e-mail.'});
   const active=db.prepare("SELECT 1 FROM subscriptions WHERE client_email=? COLLATE NOCASE AND status='ACTIVE' AND expires_at>? LIMIT 1").get(email,Date.now());
   if(!active)return res.status(403).json({error:'Não encontramos uma assinatura ativa para esta conta.'});
   const token=crypto.randomBytes(32).toString('hex');
