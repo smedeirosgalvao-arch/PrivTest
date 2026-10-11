@@ -304,6 +304,18 @@ app.post('/api/webhooks/omegapay/:identifier', handleOmegaWebhook);
 app.get('/api/admin/state', guard, (req, res) =>
   res.json({ profile: getProfile(), posts: db.prepare('SELECT * FROM posts ORDER BY created DESC').all().map(p => shape(p, true)) }));
 
+app.get('/api/admin/subscriptions', guard, (req, res) => {
+  const now = Date.now();
+  const rows = db.prepare(`SELECT s.id,s.client_email,s.plan,s.starts_at,s.expires_at,s.status,s.pix_identifier,s.created,t.status AS payment_status,t.amount
+    FROM subscriptions s LEFT JOIN pix_transactions t ON t.identifier=s.pix_identifier
+    ORDER BY s.created DESC`).all();
+  res.set('Cache-Control', 'no-store');
+  res.json({subscriptions: rows.map(s => ({
+    ...s,
+    status: s.status !== 'ACTIVE' ? s.status : (Number(s.expires_at) <= now ? 'EXPIRED' : 'ACTIVE')
+  }))});
+});
+
 app.get('/api/admin/dashboard', guard, (req, res) => {
   const visits = db.prepare('SELECT COUNT(*) AS n FROM site_visits').get().n;
   const pix = db.prepare('SELECT COUNT(*) AS total, SUM(CASE WHEN status=\'COMPLETED\' THEN 1 ELSE 0 END) AS paid, COALESCE(SUM(CASE WHEN status=\'COMPLETED\' THEN amount ELSE 0 END),0) AS revenue FROM pix_transactions').get();
