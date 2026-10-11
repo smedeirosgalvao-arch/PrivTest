@@ -226,27 +226,35 @@ app.post('/api/pix/create', async (req,res) => {
   }
 });
 
-app.post('/api/webhooks/omegapay/:identifier', (req,res) => {
-  const identifier=String(req.params.identifier||'');
+function handleOmegaWebhook(req,res) {
+  const body=req.body||{};
+  // A OmegaPayments envia o identificador da aplicação dentro de transaction.identifier.
+  // O callback individual também pode fornecer o identificador na própria URL.
+  const identifier=String(req.params.identifier||body.transaction?.identifier||body.identifier||body.metadata?.orderId||'').trim();
+  if(!identifier) return res.status(400).json({error:'Identificador da transação ausente.'});
   const tx=db.prepare('SELECT * FROM pix_transactions WHERE identifier=?').get(identifier);
   if(!tx) return res.sendStatus(404);
-  const body=req.body||{};
+
   const supplied=String(body.token||'');
-  const expected=String(tx.webhook_token||'');
-  if(!expected||!supplied||Buffer.byteLength(supplied)!==Buffer.byteLength(expected)||!crypto.timingSafeEqual(Buffer.from(supplied),Buffer.from(expected)) || !String(body.event||'').startsWith('TRANSACTION_')) return res.sendStatus(401);
-  const eventKey=String(body.eventId||body.id||`${body.event}:${body.transaction?.id||body.transactionId||identifier}:${body.occurredAt||body.timestamp||''}`).slice(0,250);
-  if(db.prepare('SELECT 1 FROM webhook_events WHERE event_key=?').get(eventKey)) return res.json({ok:true,duplicate:true});
-  const event=String(body.event);
+  const configuredToken=String(getGatewayConfig().omega.webhookToken||'');
+  const expectedTokens=[tx.webhook_token,configuredToken].filter(Boolean).map(String);
+  const validToken=expectedTokens.some(expected=>Buffer.byteLength(supplied)===Buffer.byteLength(expected)&&crypto.timingSafeEqual(Buffer.from(supplied),Buffer.from(expected)));
+  const event=String(body.event||'');
   const statusMap={'TRANSACTION_PAID':'COMPLETED','TRANSACTION_CREATED':'PENDING','TRANSACTION_CANCELED':'CANCELED','TRANSACTION_REFUNDED':'REFUNDED','TRANSACTION_CHARGED_BACK':'CHARGED_BACK','TRANSACTION_FAILED':'FAILED'};
   const status=statusMap[event];
-  if(!status) return res.sendStatus(400);
+  if(!validToken || !status) return res.sendStatus(401);
+
+  const eventKey=String(body.eventId||body.id||`${event}:${body.transaction?.id||body.transactionId||identifier}:${body.occurredAt||body.timestamp||''}`).slice(0,250);
+  if(db.prepare('SELECT 1 FROM webhook_events WHERE event_key=?').get(eventKey)) return res.json({ok:true,duplicate:true});
   const now=Date.now();
   const insert=db.prepare('INSERT INTO webhook_events(event_key,event,received) VALUES(?,?,?)');
   const update=db.prepare('UPDATE pix_transactions SET status=?,updated=? WHERE identifier=?');
   const txWork=db.transaction(()=>{insert.run(eventKey,event,now);update.run(status,now,identifier)});
   txWork();
-  res.json({ok:true});
-});
+  return res.status(200).json({ok:true});
+}
+app.post('/api/webhooks/omegapay', handleOmegaWebhook);
+app.post('/api/webhooks/omegapay/:identifier', handleOmegaWebhook);
 
 
 app.get('/api/admin/state', guard, (req, res) =>
