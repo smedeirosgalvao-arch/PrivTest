@@ -7,7 +7,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
-const DATA = path.resolve(process.env.DATA_DIR || path.join(here, 'data'));
+const DATA = path.resolve(process.env.DATA_DIR || (process.env.NODE_ENV === 'production' ? '/data' : path.join(here, 'data')));
 const UP = path.join(DATA, 'uploads'), TMP = path.join(DATA, 'tmp');
 fs.mkdirSync(UP, { recursive: true }); fs.mkdirSync(TMP, { recursive: true });
 const PROD = process.env.NODE_ENV === 'production';
