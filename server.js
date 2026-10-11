@@ -390,37 +390,44 @@ app.get('/api/admin/payments', guard, (req, res) => {
   res.json({payments:rows,total,limit,offset,summary:{total:summary.total||0,paid:summary.paid||0,pending:summary.pending||0,revenue:summary.revenue||0}});
 });
 
+const DASH_DAYS = new Set([7, 30, 90]);
+function safeTimeZone(tz) {
+  try { new Intl.DateTimeFormat('en-CA', { timeZone: tz }); return tz; } catch { return 'UTC'; }
+}
 app.get('/api/admin/dashboard', guard, (req, res) => {
   const visits = db.prepare('SELECT COUNT(*) AS n FROM site_visits').get().n;
-  const pix = db.prepare('SELECT COUNT(*) AS total, SUM(CASE WHEN status=\'COMPLETED\' THEN 1 ELSE 0 END) AS paid, COALESCE(SUM(CASE WHEN status=\'COMPLETED\' THEN amount ELSE 0 END),0) AS revenue FROM pix_transactions').get();
-  res.set('Cache-Control', 'no-store');
-  const days = Number(req.query.days) === 30 ? 30 : 7;
-  const series = [];
-  const start = new Date();
-  start.setUTCHours(0, 0, 0, 0);
-  start.setUTCDate(start.getUTCDate() - days + 1);
-  for (let i = 0; i < days; i++) {
-    const d = new Date(start.getTime() + i * 86400000);
-    series.push({ date: d.toISOString().slice(0, 10), visits: 0, pixGenerated: 0, pixPaid: 0, revenue: 0 });
+  const pix = db.prepare("SELECT COUNT(*) AS total, SUM(CASE WHEN status='COMPLETED' THEN 1 ELSE 0 END) AS paid, COALESCE(SUM(CASE WHEN status='COMPLETED' THEN amount ELSE 0 END),0) AS revenue FROM pix_transactions").get();
+  const reqDays = Number(req.query.days);
+  const days = DASH_DAYS.has(reqDays) ? reqDays : 7;
+  // Dias são contados no fuso de quem consulta (enviado pelo painel), para que uma venda à noite caia no dia certo.
+  const tz = safeTimeZone(String(req.query.tz || 'UTC'));
+  const dayKey = ts => new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(ts));
+  const now = Date.now(), series = [], daily = new Map();
+  for (let i = days - 1; i >= 0; i--) {
+    const date = dayKey(now - i * 86400000);
+    const row = { date, visits: 0, pixGenerated: 0, pixPaid: 0, revenue: 0, newSubscriptions: 0 };
+    series.push(row); daily.set(date, row);
   }
-  const daily = new Map(series.map(x => [x.date, x]));
-  const cutoff = start.getTime();
-  for (const row of db.prepare('SELECT visited_at FROM site_visits WHERE visited_at >= ?').all(cutoff)) {
-    const day = new Date(Number(row.visited_at)).toISOString().slice(0, 10);
-    if (daily.has(day)) daily.get(day).visits++;
+  const cutoff = now - (days + 1) * 86400000; // uma folga extra; o mapa diário já descarta o que está fora do período
+  for (const r of db.prepare('SELECT visited_at FROM site_visits WHERE visited_at >= ?').all(cutoff)) {
+    const row = daily.get(dayKey(Number(r.visited_at))); if (row) row.visits++;
   }
-  for (const row of db.prepare("SELECT created, updated, amount, status FROM pix_transactions WHERE created >= ? OR (status='COMPLETED' AND updated >= ?)").all(cutoff, cutoff)) {
-    const createdDay = new Date(Number(row.created)).toISOString().slice(0, 10);
-    if (daily.has(createdDay)) daily.get(createdDay).pixGenerated++;
-    if (row.status === 'COMPLETED') {
-      const paidDay = new Date(Number(row.updated)).toISOString().slice(0, 10);
-      if (daily.has(paidDay)) {
-        daily.get(paidDay).pixPaid++;
-        daily.get(paidDay).revenue += Number(row.amount) || 0;
-      }
+  for (const r of db.prepare("SELECT created, updated, amount, status FROM pix_transactions WHERE created >= ? OR (status='COMPLETED' AND updated >= ?)").all(cutoff, cutoff)) {
+    const c = daily.get(dayKey(Number(r.created))); if (c) c.pixGenerated++;
+    if (r.status === 'COMPLETED') {
+      const pd = daily.get(dayKey(Number(r.updated)));
+      if (pd) { pd.pixPaid++; pd.revenue += Number(r.amount) || 0; }
     }
   }
-  res.json({ visits, pixGenerated: pix.total || 0, pixPaid: pix.paid || 0, revenue: pix.revenue || 0, days, series });
+  for (const r of db.prepare('SELECT created FROM subscriptions WHERE created >= ?').all(cutoff)) {
+    const row = daily.get(dayKey(Number(r.created))); if (row) row.newSubscriptions++;
+  }
+  const period = series.reduce((t, r) => ({
+    visits: t.visits + r.visits, pixGenerated: t.pixGenerated + r.pixGenerated, pixPaid: t.pixPaid + r.pixPaid,
+    revenue: t.revenue + r.revenue, newSubscriptions: t.newSubscriptions + r.newSubscriptions
+  }), { visits: 0, pixGenerated: 0, pixPaid: 0, revenue: 0, newSubscriptions: 0 });
+  res.set('Cache-Control', 'no-store');
+  res.json({ visits, pixGenerated: pix.total || 0, pixPaid: pix.paid || 0, revenue: pix.revenue || 0, days, tz, period, series });
 });
 
 app.post('/api/admin/mock-posts', guard, (req, res) => {
