@@ -286,9 +286,19 @@ $("#checkoutForm").addEventListener("submit",async e=>{
      const check=await fetch("/api/pix/status/"+encodeURIComponent(data.identifier),{cache:"no-store"});
      if(!check.ok)return;
      const state=await check.json();
-     if(state.active||state.status==="COMPLETED"){
-      $("#pixStatus").textContent="Pix confirmado! Sua assinatura foi ativada.";
+     if(state.active){
+      $("#pixStatus").textContent="Pix confirmado! Entrando na sua conta…";
       clearInterval(pixPollTimer);
+      const memberResponse=await fetch("/api/member/posts",{cache:"no-store",credentials:"same-origin"});
+      const memberData=await memberResponse.json().catch(()=>({}));
+      if(memberResponse.ok){
+       demo.posts=memberData.posts||[];demo.counts.locked=0;
+       $("#memberLoginOpen").hidden=true;$("#memberLogout").hidden=false;
+       render();$("#pixStatus").textContent="Pix confirmado! Você já está conectado e seu conteúdo foi liberado.";
+       closeCheckout();toast("Assinatura ativada! Você já está conectado.");
+      }else{
+       $("#pixStatus").textContent="Pix confirmado! Sua assinatura foi ativada. Entre na sua conta para acessar o conteúdo.";
+      }
      }else if(["CANCELED","REFUNDED","CHARGED_BACK","FAILED"].includes(state.status)){
       $("#pixStatus").textContent="O pagamento está com status: "+state.status+". Se você já pagou, fale com o suporte.";
       clearInterval(pixPollTimer);
