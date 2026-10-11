@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Perfil demo</title>
+<title>Privacy</title>
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
 :root{--bg:#f8f5f0;--card:#fff;--ink:#1f2437;--muted:#5f6b85;--orange:#f48a3c;--pink:#f7a99b;--peach:#f9c6a0;--sand:#f4ede3;--line:#e9e4dc;--tint:#fdf0f3;--chip:#f4f1ec;
@@ -13,7 +13,7 @@ box-sizing:border-box;padding-bottom:env(safe-area-inset-bottom,0px)}
 body{margin:0;background:var(--bg);color:var(--ink);font-family:Poppins,system-ui,sans-serif;overflow-x:hidden}
 .wrap{max-width:480px;margin:0 auto;padding:0 16px 32px}
 header{position:sticky;top:0;z-index:20;background:var(--bg);border-bottom:1px solid var(--line);height:calc(64px + env(safe-area-inset-top,0px));padding-top:env(safe-area-inset-top,0px);display:flex;align-items:center;justify-content:center;margin:0 -16px 8px}
-.logo{font-weight:600;font-size:30px;letter-spacing:-1.5px}.logo i{color:var(--orange);font-style:normal}
+.logo{display:flex;align-items:center;gap:7px;font-weight:700;font-size:27px;letter-spacing:-1.1px;color:#242038}.logo .privacy-mark{display:grid;place-items:center;width:31px;height:31px;border-radius:10px;background:#6c35d4;color:#fff;font-size:21px;font-weight:700;letter-spacing:-1px}.logo>span:last-child{color:#6c35d4}
 .globe{position:absolute;right:16px;top:calc(8px + env(safe-area-inset-top,0px));width:48px;height:48px;border-radius:50%;border:0;background:transparent;display:grid;place-items:center;color:var(--ink);cursor:pointer}
 .globe[aria-expanded=true]{background:#ece8e2}
 .menu{position:absolute;right:16px;top:calc(60px + env(safe-area-inset-top,0px));width:min(260px,calc(100vw - 32px));background:#fff;border-radius:16px;padding:8px;box-shadow:0 6px 24px rgba(0,0,0,.08);display:none}
@@ -93,7 +93,7 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--orange);outline-off
 <body>
 <div class="wrap">
 <header>
- <span class="logo">demo<i>.</i></span>
+ <span class="logo privacy-logo" aria-label="Privacy"><span class="privacy-mark" aria-hidden="true">P</span><span>privacy</span></span>
  <button class="globe" id="gb" aria-label="Idioma" aria-expanded="false" aria-haspopup="true">
   <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2c3 3 3 17 0 20M12 2c-3 3-3 17 0 20"/></svg>
  </button>
