@@ -457,6 +457,21 @@ app.post('/api/admin/reset-sales', guard, (req, res) => {
   }
 });
 
+app.post('/api/member/access/:identifier',(req,res)=>{
+  const identifier=String(req.params.identifier||'').trim();
+  if(!/^site_[a-f0-9]{32}$/.test(identifier))return res.status(400).json({error:'Identificador inválido.'});
+  const txRow=db.prepare("SELECT client_email,status FROM pix_transactions WHERE identifier=?").get(identifier);
+  if(!txRow||!txRow.client_email)return res.status(404).json({error:'Cobrança não encontrada.'});
+  const sub=db.prepare("SELECT status,expires_at FROM subscriptions WHERE pix_identifier=? AND client_email=? COLLATE NOCASE").get(identifier,txRow.client_email);
+  if(!sub||sub.status!=='ACTIVE'||Number(sub.expires_at)<=Date.now())return res.status(403).json({error:'A assinatura ainda não está ativa.'});
+  const token=crypto.randomBytes(32).toString('hex');
+  db.prepare('INSERT INTO customer_sessions(token,email,expires) VALUES(?,?,?)').run(sha(token),txRow.client_email,Date.now()+30*864e5);
+  res.set('Set-Cookie',`member=${token}; HttpOnly; SameSite=Strict; Path=/; Max-Age=2592000${PROD?'; Secure':''}`);
+  res.set('Cache-Control','no-store');
+  const posts=db.prepare('SELECT * FROM posts WHERE published=1 ORDER BY created DESC').all().map(p=>({...shape(p,true),locked:false}));
+  res.json({ok:true,posts});
+});
+
 app.get('/api/pix/status/:identifier', (req, res) => {
   res.set('Cache-Control', 'no-store');
   const identifier=String(req.params.identifier||'').trim();
