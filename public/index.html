@@ -118,7 +118,6 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--orange);outline-off
   <h2 id="t-sub"></h2>
   <button class="sub" data-p="1"><span id="l1"></span><span id="p1"></span></button>
   <button class="promo-h" id="ph" aria-expanded="true"><span id="t-promo"></span><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 15l6-6 6 6"/></svg></button>
-  <div style="text-align:center;margin-top:12px"><button type="button" id="memberLoginOpen" class="secondary">Já sou assinante? Entrar</button><button type="button" id="memberLogout" class="secondary" hidden>Sair da conta</button></div>
   <div class="promos" id="promos">
    <button class="sub" data-p="3"><span id="l3"></span><span id="p3"></span></button>
    <button class="sub" data-p="6"><span id="l6"></span><span id="p6"></span></button>
@@ -135,13 +134,6 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--orange);outline-off
 <div id="panel"></div>
 </div>
 <div class="toast" id="toast" role="status"></div>
-<div class="checkout-overlay" id="memberLoginOverlay" role="dialog" aria-modal="true" aria-labelledby="memberLoginTitle">
- <div class="checkout-box"><button id="memberLoginClose" class="secondary" style="float:right" type="button">Fechar ✕</button>
- <h2 id="memberLoginTitle">Área do assinante</h2><p>Entre com o e-mail e a senha usados na compra.</p>
- <form id="memberLoginForm"><label for="memberEmail">E-mail</label><input id="memberEmail" type="email" required autocomplete="email">
- <label for="memberPassword">Senha</label><input id="memberPassword" type="password" required autocomplete="current-password">
- <p class="checkout-error" id="memberLoginError" role="alert"></p><button class="primary" type="submit">Entrar e desbloquear conteúdo</button></form>
- </div></div>
 <div class="checkout-overlay" id="checkoutOverlay" role="dialog" aria-modal="true" aria-labelledby="checkoutTitle">
  <div class="checkout-box">
   <button id="checkoutClose" class="secondary" style="float:right" type="button">Fechar ✕</button>
@@ -241,23 +233,6 @@ menu.onclick=e=>{const b=e.target.closest("[data-l]");if(b){lang=b.dataset.l;ren
 document.addEventListener("click",e=>{if(open&&!menu.contains(e.target))setMenu(false);
  if(!e.target.closest(".dots,.pm"))document.querySelectorAll(".pm.open").forEach(x=>x.classList.remove("open"))});
 document.addEventListener("keydown",e=>{if(e.key==="Escape"){setMenu(false);document.querySelectorAll(".pm.open").forEach(x=>x.classList.remove("open"));gb.focus()}});
-const memberLoginOverlay=$("#memberLoginOverlay");
-$("#memberLoginOpen").onclick=()=>memberLoginOverlay.classList.add("open");
-$("#memberLoginClose").onclick=()=>memberLoginOverlay.classList.remove("open");
-$("#memberLoginForm").onsubmit=async e=>{
- e.preventDefault();const err=$("#memberLoginError");err.textContent="";
- try{
-  const r=await fetch("/api/account/login",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({email:$("#memberEmail").value,password:$("#memberPassword").value})});
-  const d=await r.json();if(!r.ok)throw new Error(d.error||"Não foi possível entrar.");
-  const pr=await fetch("/api/member/posts",{cache:"no-store"});const pd=await pr.json();if(!pr.ok)throw new Error(pd.error||"Não foi possível carregar o conteúdo.");
-  demo.posts=pd.posts;demo.counts.locked=0;$("#memberLoginOverlay").classList.remove("open");$("#memberLoginOpen").hidden=true;$("#memberLogout").hidden=false;render();toast("Conteúdo desbloqueado!");
- }catch(ex){err.textContent=ex.message||"Erro ao entrar."}
-};
-$("#memberLogout").onclick=async()=>{
- await fetch("/api/account/logout",{method:"POST"}).catch(()=>{});
- $("#memberLoginOpen").hidden=false;$("#memberLogout").hidden=true;await load();
-};
-
 $("#more").onclick=()=>{bioOpen=!bioOpen;render()};
 $("#ph").onclick=()=>{const h=$("#promos").hidden=!$("#promos").hidden;$("#ph").setAttribute("aria-expanded",!h)};
 $("#tabs").onclick=e=>{const b=e.target.closest("[data-i]");if(!b)return;tab=+b.dataset.i;$("#tabs").dataset.t=tab;
@@ -318,7 +293,7 @@ document.addEventListener("click",e=>{
  const l=e.target.closest("[data-like]");if(l){l.classList.toggle("on");l.querySelector("path").setAttribute("fill",l.classList.contains("on")?"currentColor":"none");return}
  const x=e.target.closest("[data-a]");if(x){x.closest(".pm")?.classList.remove("open");toast(T[lang].demo)}
 });
-async function load(){try{const r=await fetch("/api/public");if(!r.ok)throw 0;demo=await r.json()}catch{toast("Não foi possível carregar o perfil.")}render()}
+async function load(){try{const r=await fetch("/api/public");if(!r.ok)throw 0;demo=await r.json();const mr=await fetch("/api/member/posts",{cache:"no-store"});if(mr.ok){const md=await mr.json();demo.posts=md.posts;demo.counts.locked=0}}catch{toast("Não foi possível carregar o perfil.")}render()}
 load();
 </script>
 </body>
