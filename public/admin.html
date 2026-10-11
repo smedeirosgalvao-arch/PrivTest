@@ -1476,12 +1476,13 @@ $("#paymentsRefresh").addEventListener("click",()=>refreshPayments(false));$("#p
 $("#paymentsPrev").addEventListener("click",()=>{paymentsOffset=Math.max(0,paymentsOffset-50);refreshPayments(false)});$("#paymentsNext").addEventListener("click",()=>{if(paymentsOffset+50<paymentsTotal){paymentsOffset+=50;refreshPayments(false)}});
 /* ---------- checkout settings ---------- */
 async function loadCheckoutConfig(){
- try{const c=await send('GET','/checkout-config');$('#checkoutMode').value=c.mode||'normal';}catch{}
- try{const c=await send('GET','/admin/checkout-config');$('#checkoutMode').value=c.mode||'normal';$('#checkoutName').value=c.name||'';$('#checkoutEmail').value=c.email||'';$('#checkoutPhone').value=c.phone||'';$('#checkoutDocument').value=c.document||'';}catch(e){$('#checkoutConfigError').textContent=e.message}
+ $('#checkoutConfigError').textContent='';
+ try{const c=await send('GET','/checkout-config');$('#checkoutMode').value=c.mode||'normal';$('#checkoutName').value=c.name||'';$('#checkoutEmail').value=c.email||'';$('#checkoutPhone').value=c.phone||'';$('#checkoutDocument').value=c.document||'';}
+ catch(e){$('#checkoutConfigError').textContent=e.message}
 }
 $('#checkoutConfigSave').onclick=async()=>{
  $('#checkoutConfigError').textContent='';
- try{await send('PUT','/admin/checkout-config',{mode:$('#checkoutMode').value,name:$('#checkoutName').value,email:$('#checkoutEmail').value,phone:$('#checkoutPhone').value,document:$('#checkoutDocument').value});$('#checkoutConfigError').textContent='Configuração salva.'}
+ try{await send('PUT','/checkout-config',{mode:$('#checkoutMode').value,name:$('#checkoutName').value,email:$('#checkoutEmail').value,phone:$('#checkoutPhone').value,document:$('#checkoutDocument').value});$('#checkoutConfigError').textContent='Configuração salva.'}
  catch(e){$('#checkoutConfigError').textContent=e.message}
 };
 /* ---------- gateways ---------- */
