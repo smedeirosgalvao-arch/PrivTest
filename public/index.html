@@ -127,10 +127,11 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--orange);outline-off
    <p class="checkout-error" id="checkoutError" role="alert"></p>
    <div class="checkout-actions"><button class="secondary" type="button" id="checkoutCancel">Cancelar</button><button class="primary" type="submit" id="checkoutSubmit">Gerar Pix</button></div>
   </form>
-  <div class="pix-result" id="pixResult"><p><strong>Pix gerado</strong><br>Escaneie o QR Code ou copie o cÃ³digo abaixo. O pagamento ainda nÃ£o estÃ¡ confirmado.</p><img id="pixImage" alt="QR Code Pix" hidden><textarea id="pixCode" class="pix-code" readonly aria-label="CÃ³digo Pix copia e cola"></textarea><button class="copy-pix primary" type="button" id="copyPix">Copiar cÃ³digo Pix</button><p id="pixStatus">Aguardando pagamentoâ¦</p><button class="secondary" type="button" id="newPix">Voltar aos planos</button></div>
+  <div class="pix-result" id="pixResult"><p><strong>Pix gerado</strong><br>Escaneie o QR Code ou copie o cÃ³digo abaixo. O pagamento ainda nÃ£o estÃ¡ confirmado.</p><img id="pixImage" alt="QR Code Pix" hidden><div id="pixQrFallback" aria-label="QR Code Pix" hidden style="margin:12px auto;width:220px;min-height:220px;display:flex;align-items:center;justify-content:center"></div><textarea id="pixCode" class="pix-code" readonly aria-label="CÃ³digo Pix copia e cola"></textarea><button class="copy-pix primary" type="button" id="copyPix">Copiar cÃ³digo Pix</button><p id="pixStatus">Aguardando pagamentoâ¦</p><button class="secondary" type="button" id="newPix">Voltar aos planos</button></div>
  </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
 <script>
 let demo={profile:{name:"",handle:"",bio:"",price1:0,price3:0,price6:0},counts:{posts:0,images:0,videos:0},posts:[]};
 const T={
@@ -213,7 +214,7 @@ $("#checkoutForm").addEventListener("submit",async e=>{
   const response=await fetch("/api/pix/create",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({name:$("#buyerName").value.trim(),email:$("#buyerEmail").value.trim(),phone:$("#buyerPhone").value.trim(),document:$("#buyerDocument").value.replace(/\D/g,""),plan:selectedPlan})});
   const data=await response.json().catch(()=>({}));if(!response.ok||!data.ok)throw new Error(data.error||"NÃ£o foi possÃ­vel gerar o Pix.");
   $("#checkoutForm").hidden=true;$("#pixResult").classList.add("show");$("#pixCode").value=data.pix.code||"";
-  const img=$("#pixImage");if(data.pix.image){img.src=data.pix.image;img.hidden=false}else{img.hidden=true;img.removeAttribute("src")}
+  const img=$("#pixImage"),qr=$("#pixQrFallback");qr.innerHTML="";qr.hidden=true;if(data.pix.image){img.src=data.pix.image;img.hidden=false}else{img.hidden=true;img.removeAttribute("src");if(window.QRCode&&data.pix.code){qr.hidden=false;new QRCode(qr,{text:data.pix.code,width:220,height:220,colorDark:"#000000",colorLight:"#ffffff",correctLevel:QRCode.CorrectLevel.M});}}
   $("#pixStatus").textContent="CobranÃ§a criada. Aguardando confirmaÃ§Ã£o do provedor.";
  }catch(err){error.textContent=err.message||"Erro ao conectar ao gateway."}finally{submit.disabled=false;submit.textContent="Gerar Pix"}
 });
