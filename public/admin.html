@@ -211,10 +211,13 @@ function activateTab(name){
  $("#tabHeading").textContent=tabCopy[name]||"Painel administrativo"; document.querySelectorAll("[data-go]").forEach(b=>b.onclick=()=>activateTab(b.dataset.go));
 }
 $("#adminNav").addEventListener("click",e=>{const b=e.target.closest("[data-tab]");if(b)activateTab(b.dataset.tab)});
-async function load(){try{S=await send("GET","/state");try{dashboard=await send("GET","/dashboard")}catch{}view(true);draw()}catch{view(false)}}
+async function load(){try{S=await send("GET","/state");try{dashboard=await send("GET","/dashboard")}catch(e){console.warn("Falha ao carregar métricas:",e.message)}view(true);draw();return true}catch(e){view(false);throw e}}
 
 $("#lbtn").onclick=async()=>{$("#lerr").textContent="";
- try{await send("POST","/login",{email:$("#em").value,password:$("#pw").value});$("#pw").value="";await load()}catch(e){$("#lerr").textContent=e.message}};
+ const button=$("#lbtn");button.disabled=true;button.textContent="Entrando…";
+ try{await send("POST","/login",{email:$("#em").value.trim(),password:$("#pw").value});$("#pw").value="";await load()}
+ catch(e){$("#lerr").textContent=e.message||"Não foi possível entrar. Confira o e-mail e a senha."}
+ finally{button.disabled=false;button.textContent="Entrar"}};
 $("#pw").onkeydown=e=>e.key==="Enter"&&$("#lbtn").click();
 $("#out").onclick=async()=>{await send("POST","/logout",{}).catch(()=>{});view(false)};
 
