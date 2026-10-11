@@ -214,7 +214,8 @@ app.post('/api/pix/create', async (req,res) => {
     if(!r.ok||!pixCode||!transactionId) {
       const providerError = root?.message || root?.error || root?.detail || root?.description || data?.message || data?.error || data?.detail || null;
       const providerCode = root?.code || root?.errorCode || data?.code || data?.errorCode || null;
-      console.error('OmegaPayments Pix: resposta inválida',JSON.stringify({httpStatus:r.status,providerStatus:root?.status||null,providerCode:providerCode?String(providerCode).slice(0,120):null,providerError:providerError?String(providerError).slice(0,500):null,responseKeys:Object.keys(root||{}).slice(0,30),hasPixCode:!!pixCode,hasTransactionId:!!transactionId}));
+      const validationDetails = root?.details ?? data?.details ?? null;
+      console.error('OmegaPayments Pix: resposta inválida',JSON.stringify({httpStatus:r.status,providerStatus:root?.status||null,providerCode:providerCode?String(providerCode).slice(0,120):null,providerError:providerError?String(providerError).slice(0,500):null,validationDetails, responseKeys:Object.keys(root||{}).slice(0,30),hasPixCode:!!pixCode,hasTransactionId:!!transactionId}));
       return res.status(502).json({error:r.status===401||r.status===403?'A OmegaPayments recusou as credenciais. Confira as chaves do gateway.':r.status===400?'A OmegaPayments rejeitou os dados da cobrança. Confira a configuração do gateway.':'A OmegaPayments não retornou o código Pix esperado. Confira as chaves e tente novamente.'});
     }
     const now=Date.now();
