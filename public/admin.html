@@ -515,8 +515,10 @@ progress{width:100%;height:6px;accent-color:var(--accent);margin-top:12px}
                 <div class="field"><label for="p1">Preço 1 mês (R$)</label><input id="p1" type="number" step="0.01" min="0" inputmode="decimal"></div>
                 <div class="field"><label for="p3">Preço 3 meses (R$)</label><input id="p3" type="number" step="0.01" min="0" inputmode="decimal"></div>
                 <div class="field"><label for="p6">Preço 6 meses (R$)</label><input id="p6" type="number" step="0.01" min="0" inputmode="decimal"></div>
-                <div class="field"><label>Instagram</label><input type="text" disabled placeholder="Em breve"></div>
-                <div class="field"><label>TikTok</label><input type="text" disabled placeholder="Em breve"></div>
+                <div class="field"><label for="socialInstagram">Instagram (URL completa)</label><input id="socialInstagram" type="url" maxlength="500" placeholder="https://instagram.com/usuario" inputmode="url"></div>
+                <div class="field"><label for="socialX">X / Twitter (URL completa)</label><input id="socialX" type="url" maxlength="500" placeholder="https://x.com/usuario" inputmode="url"></div>
+                <div class="field"><label for="socialTikTok">TikTok (URL completa)</label><input id="socialTikTok" type="url" maxlength="500" placeholder="https://tiktok.com/@usuario" inputmode="url"></div>
+                <div class="field"><label for="socialTelegram">Telegram (URL completa)</label><input id="socialTelegram" type="url" maxlength="500" placeholder="https://t.me/usuario" inputmode="url"></div>
               </div>
               <div class="err" id="rerr" role="alert"></div>
               <div class="page-actions" style="margin-top:12px"><button class="btn" type="submit" id="prSave">Salvar perfil</button></div>
@@ -965,6 +967,8 @@ function draw(){
  const r=S.profile;
  $("#nm").value=r.name||"";$("#hd").value=r.handle||"";$("#bio").value=r.bio||"";
  $("#p1").value=r.price1;$("#p3").value=r.price3;$("#p6").value=r.price6;
+ $("#socialInstagram").value=r.instagram||"";$("#socialX").value=r.x||"";
+ $("#socialTikTok").value=r.tiktok||"";$("#socialTelegram").value=r.telegram||"";
  updatePreview();
 }
 
@@ -1162,6 +1166,8 @@ $("#prf").onsubmit=async e=>{
  const f=new FormData();
  f.append("name",$("#nm").value);f.append("handle",$("#hd").value);f.append("bio",$("#bio").value);
  f.append("price1",$("#p1").value);f.append("price3",$("#p3").value);f.append("price6",$("#p6").value);
+ f.append("instagram",$("#socialInstagram").value.trim());f.append("x",$("#socialX").value.trim());
+ f.append("tiktok",$("#socialTikTok").value.trim());f.append("telegram",$("#socialTelegram").value.trim());
  if($("#av").files[0])f.append("avatar",$("#av").files[0]);
  if($("#cv").files[0])f.append("cover",$("#cv").files[0]);
  try{await send("PUT","/profile",f);$("#av").value="";$("#cv").value="";await load();$("#rerr").textContent="Perfil salvo.";$("#rerr").className="err ok-msg"}
