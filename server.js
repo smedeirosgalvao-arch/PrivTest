@@ -287,7 +287,7 @@ app.post('/api/pix/create', async (req,res) => {
 
   const identifier='site_'+crypto.randomUUID().replaceAll('-','');
   const base=`${req.protocol}://${req.get('host')}`;
-  const callbackUrl=`${base}/api/webhooks/omegapay/${encodeURIComponent(identifier)}`;
+  const callbackUrl=`${base}/api/webhooks/omegapay`;
   // O provedor exige vencimento em data futura, telefone e documento do cliente.
   // Use uma data UTC futura com margem para evitar falha quando a data local virar.
   const dueDate=new Date(Date.now()+48*60*60*1000).toISOString().slice(0,10);
