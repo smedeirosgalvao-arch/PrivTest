@@ -131,7 +131,7 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--orange);outline-off
  </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script>
 let demo={profile:{name:"",handle:"",bio:"",price1:0,price3:0,price6:0},counts:{posts:0,images:0,videos:0},posts:[]};
 const T={
@@ -214,7 +214,7 @@ $("#checkoutForm").addEventListener("submit",async e=>{
   const response=await fetch("/api/pix/create",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({name:$("#buyerName").value.trim(),email:$("#buyerEmail").value.trim(),phone:$("#buyerPhone").value.trim(),document:$("#buyerDocument").value.replace(/\D/g,""),plan:selectedPlan})});
   const data=await response.json().catch(()=>({}));if(!response.ok||!data.ok)throw new Error(data.error||"NÃ£o foi possÃ­vel gerar o Pix.");
   $("#checkoutForm").hidden=true;$("#pixResult").classList.add("show");$("#pixCode").value=data.pix.code||"";
-  const img=$("#pixImage"),qr=$("#pixQrFallback");qr.innerHTML="";qr.hidden=true;if(data.pix.image){img.src=data.pix.image;img.hidden=false}else{img.hidden=true;img.removeAttribute("src");if(data.pix.code){qr.hidden=false;if(window.QRCode){new QRCode(qr,{text:data.pix.code,width:220,height:220,colorDark:"#000000",colorLight:"#ffffff",correctLevel:QRCode.CorrectLevel.M});}else{const fallback=document.createElement("img");fallback.alt="QR Code Pix";fallback.width=220;fallback.height=220;fallback.style.cssText="display:block;width:220px;height:220px;object-fit:contain";fallback.src="https://api.qrserver.com/v1/create-qr-code/?size=220x220&data="+encodeURIComponent(data.pix.code);fallback.onerror=()=>{qr.innerHTML="NÃ£o foi possÃ­vel carregar a imagem do QR Code. Use o botÃ£o Copiar cÃ³digo Pix.";};qr.appendChild(fallback);}}}
+  const img=$("#pixImage"),qr=$("#pixQrFallback");qr.innerHTML="";qr.hidden=true;if(data.pix.image){img.src=data.pix.image;img.hidden=false}else{img.hidden=true;img.removeAttribute("src");if(data.pix.code){qr.hidden=false;if(window.QRCode){new QRCode(qr,{text:data.pix.code,width:220,height:220,colorDark:"#000000",colorLight:"#ffffff",correctLevel:QRCode.CorrectLevel.M});}else{const fallback=document.createElement("img");fallback.alt="QR Code Pix";fallback.width=220;fallback.height=220;fallback.style.cssText="display:block;width:220px;height:220px;object-fit:contain";fallback.onerror=()=>{if(fallback.dataset.retry!=="1"){fallback.dataset.retry="1";fallback.src="https://quickchart.io/qr?text="+encodeURIComponent(data.pix.code)+"&size=220";}else{qr.innerHTML="NÃ£o foi possÃ­vel carregar a imagem do QR Code. Use o botÃ£o Copiar cÃ³digo Pix.";}};fallback.src="https://api.qrserver.com/v1/create-qr-code/?size=220x220&data="+encodeURIComponent(data.pix.code);qr.appendChild(fallback);}}}
   $("#pixStatus").textContent="CobranÃ§a criada. Aguardando confirmaÃ§Ã£o do provedor.";
  }catch(err){error.textContent=err.message||"Erro ao conectar ao gateway."}finally{submit.disabled=false;submit.textContent="Gerar Pix"}
 });
