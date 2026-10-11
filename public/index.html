@@ -140,6 +140,7 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--orange);outline-off
   <h2 id="checkoutTitle">Assinar com Pix</h2>
   <p id="checkoutPlanText">Plano selecionado</p>
   <form id="checkoutForm">
+   <div id="normalCheckoutFields">
    <label for="buyerName">Nome</label><input id="buyerName" name="name" autocomplete="name" required minlength="2" maxlength="120" placeholder="Seu nome">
    <label for="buyerEmail">E-mail</label><input id="buyerEmail" name="email" type="email" autocomplete="email" required maxlength="180" placeholder="voce@email.com">
    <label for="buyerPassword">Crie uma senha</label><input id="buyerPassword" name="password" type="password" autocomplete="new-password" required minlength="8" maxlength="200" placeholder="Mínimo de 8 caracteres">
@@ -147,6 +148,7 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--orange);outline-off
    <label for="buyerPhone">Telefone com DDD</label><input id="buyerPhone" name="phone" type="tel" autocomplete="tel" required maxlength="30" placeholder="(79) 99999-9999">
    <label for="buyerDocument">CPF ou CNPJ</label><input id="buyerDocument" name="document" inputmode="numeric" autocomplete="off" required maxlength="30" placeholder="Somente números">
    <p>Crie sua conta durante a compra. Use uma senha com pelo menos 8 caracteres. Sua assinatura e o conteúdo exclusivo só serão liberados após a confirmação do Pix.</p>
+   </div>
    <p class="checkout-error" id="checkoutError" role="alert"></p>
    <div class="checkout-actions"><button class="secondary" type="button" id="checkoutCancel">Cancelar</button><button class="primary" type="submit" id="checkoutSubmit">Gerar Pix</button></div>
   </form>
@@ -293,6 +295,10 @@ document.addEventListener("click",e=>{
  const l=e.target.closest("[data-like]");if(l){l.classList.toggle("on");l.querySelector("path").setAttribute("fill",l.classList.contains("on")?"currentColor":"none");return}
  const x=e.target.closest("[data-a]");if(x){x.closest(".pm")?.classList.remove("open");toast(T[lang].demo)}
 });
+async function configureCheckoutMode(){
+ try{const r=await fetch('/api/checkout-config',{cache:'no-store'});const c=await r.json();const fields=$('#normalCheckoutFields');if(c.mode==='automatic'){fields.hidden=true;fields.querySelectorAll('input').forEach(x=>x.required=false)}else{fields.hidden=false;fields.querySelectorAll('input').forEach(x=>x.required=true)}}catch{}
+}
+configureCheckoutMode();
 async function load(){try{const r=await fetch("/api/public");if(!r.ok)throw 0;demo=await r.json();const mr=await fetch("/api/member/posts",{cache:"no-store"});if(mr.ok){const md=await mr.json();demo.posts=md.posts;demo.counts.locked=0}}catch{toast("Não foi possível carregar o perfil.")}render()}
 load();
 </script>
