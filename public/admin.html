@@ -548,19 +548,31 @@ progress{width:100%;height:6px;accent-color:var(--accent);margin-top:12px}
         </div>
       </section>
 
-      <!-- ===== PAGAMENTOS (estrutura) ===== -->
+      <!-- ===== PAGAMENTOS ===== -->
       <section id="payments" data-panel hidden>
-        <div class="page-head"><div><p class="hint">Transações Pix e seus status.</p></div></div>
+        <div class="page-head"><div><p class="hint">Histórico de cobranças Pix, valores e situação das transações.</p></div><button class="btn ghost" id="paymentsRefresh" type="button">Atualizar</button></div>
+        <div class="kpis" style="margin-bottom:16px">
+          <article class="kpi"><div class="kpi-top"><span>Pix gerados</span></div><strong id="payTotal">—</strong></article>
+          <article class="kpi"><div class="kpi-top"><span>Pagos</span></div><strong id="payPaid">—</strong></article>
+          <article class="kpi"><div class="kpi-top"><span>Pendentes</span></div><strong id="payPending">—</strong></article>
+          <article class="kpi"><div class="kpi-top"><span>Faturamento pago</span></div><strong id="payRevenue">—</strong></article>
+        </div>
         <div class="card">
-          <div class="toolbar">
-            <div class="seg" role="group" aria-label="Status">
-              <button type="button" aria-pressed="true" disabled>Todos</button>
-              <button type="button" aria-pressed="false" disabled>Pagos</button>
-              <button type="button" aria-pressed="false" disabled>Pendentes</button>
+          <div class="toolbar" style="flex-wrap:wrap">
+            <div class="seg" role="group" aria-label="Filtrar pagamentos">
+              <button type="button" data-pay-status="ALL" aria-pressed="true">Todos</button>
+              <button type="button" data-pay-status="COMPLETED" aria-pressed="false">Pagos</button>
+              <button type="button" data-pay-status="PENDING" aria-pressed="false">Pendentes</button>
+              <button type="button" data-pay-status="CANCELED" aria-pressed="false">Cancelados</button>
+              <button type="button" data-pay-status="FAILED" aria-pressed="false">Falharam</button>
             </div>
-            <select disabled aria-label="Período" style="width:auto"><option>Últimos 30 dias</option></select>
+            <input id="paymentsSearch" type="search" placeholder="Buscar por e-mail ou identificador" aria-label="Buscar pagamento" style="max-width:320px">
           </div>
-          <div class="empty"><div><div class="empty-ico"><svg viewBox="0 0 24 24"><rect x="2.5" y="5" width="19" height="14" rx="2.5"/><path d="M2.5 10h19"/></svg></div><strong>Lista de transações</strong><p>As transações Pix aparecerão aqui com valor, status e data.</p></div></div>
+          <div id="paymentsList"><p class="hint">Carregando transações…</p></div>
+          <div class="toolbar" style="justify-content:space-between;margin-top:14px">
+            <span id="paymentsPageInfo" class="hint"></span>
+            <div style="display:flex;gap:8px"><button class="btn ghost sm" id="paymentsPrev" type="button">Anterior</button><button class="btn ghost sm" id="paymentsNext" type="button">Próxima</button></div>
+          </div>
         </div>
       </section>
 
