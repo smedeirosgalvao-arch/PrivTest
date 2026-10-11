@@ -102,6 +102,28 @@ input[type=file]{padding:12px;border-radius:11px;background:#0c120e;border-color
 @media(min-width:1000px){main{max-width:1320px;padding:30px 32px 60px}}
 @media(max-width:760px){.admin-nav{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;padding:7px}.tab-btn{justify-content:flex-start;padding:0 11px;min-height:44px}.tab-btn:last-child{grid-column:1/-1}}
 @media(max-width:390px){.tab-btn{font-size:11px;padding:0 8px}}
+
+#app{display:grid;grid-template-columns:232px minmax(0,1fr);column-gap:30px;align-items:start}
+#app>.top{grid-column:2;grid-row:1;min-width:0}
+#app>.sidebar{grid-column:1;grid-row:1 / span 12;position:sticky;top:22px;align-self:start;min-height:calc(100vh - 44px);display:flex;flex-direction:column;padding:18px 12px;border:1px solid #26372b;border-radius:18px;background:linear-gradient(180deg,#111813,#0c100d);box-shadow:0 18px 50px #0003}
+.brandmark{display:flex;align-items:center;gap:11px;text-decoration:none;color:#f3f8f2;font-size:15px;font-weight:850;letter-spacing:.06em;padding:8px 8px 24px;border-bottom:1px solid #26352a}
+.brand-symbol{display:grid;place-items:center;width:40px;height:40px;border-radius:13px;background:var(--green);color:#0b1108;font-size:24px;font-weight:900}
+.brand-light{color:var(--green)}.brandmark small{display:block;font-size:9px;letter-spacing:.16em;color:#829387;font-weight:700;margin-top:3px}
+.side-label,.eyebrow{font-size:10px;letter-spacing:.14em;color:#819185;font-weight:800}.side-label{padding:23px 10px 10px}
+#app .admin-nav{display:flex;flex-direction:column;gap:5px;padding:0;margin:0;border:0;background:transparent;box-shadow:none;overflow:visible}
+#app .tab-btn{width:100%;justify-content:flex-start;gap:12px;padding:0 12px;min-height:46px;border:1px solid transparent;border-radius:11px;font-family:inherit;font-size:13px;font-weight:600;color:#98a79b}
+#app .tab-btn .tab-icon{display:grid;place-items:center;width:29px;height:29px;border-radius:9px;background:#18211b;color:#a8b9aa;font-size:16px}
+#app .tab-btn[aria-selected=true]{background:linear-gradient(100deg,#263b20,#19251a);border-color:#304b2a;color:var(--green)}
+#app .tab-btn[aria-selected=true] .tab-icon{background:#3a542b;color:var(--green)}
+.sidebar-foot{margin-top:auto;padding:18px 9px 8px;border-top:1px solid #26352a;color:#b4c2b6;font-size:11px;line-height:1.8}.sidebar-foot small{color:#718174;font-size:10px}.side-dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--green);margin-right:6px}
+#app>.tab-heading,#app>section.card{grid-column:2;min-width:0}#app>.tab-heading{margin-top:3px}#app>section.card{margin-bottom:18px}
+.overview{padding:25px}.overview-title{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;margin-bottom:23px}.overview-title h2{font-size:25px;margin:7px 0 5px;letter-spacing:-.04em}.overview-title .stats{margin:0}
+.live-pill{display:inline-flex;align-items:center;gap:7px;border:1px solid #2e4831;border-radius:999px;padding:7px 11px;color:#b6d5b9;font-size:11px;white-space:nowrap}.live-pill i{width:7px;height:7px;border-radius:50%;background:var(--green)}
+.overview-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}.metric{min-width:0;padding:17px;border:1px solid #2a3b2e;border-radius:14px;background:linear-gradient(145deg,#17211a,#101612)}.metric-label{display:block;color:#a6b5a9;font-size:11px;line-height:1.5}.metric strong{display:block;font-size:clamp(24px,3vw,32px);line-height:1.25;letter-spacing:-.05em;margin:9px 0 5px}.metric small{font-size:10px;color:#829185}
+.overview-bottom{display:flex;align-items:center;justify-content:space-between;gap:18px;margin-top:16px;padding:20px;border:1px solid #293a2d;border-radius:14px;background:#0c120e}.overview-bottom h3,.overview-section h3{font-size:15px;margin:7px 0 5px}.overview-bottom p{margin:0;max-width:440px}.overview-bottom .row{justify-content:flex-end}
+.overview-section{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:25px 0 4px}
+@media(max-width:900px){#app{grid-template-columns:190px minmax(0,1fr);column-gap:16px}.overview-grid{grid-template-columns:repeat(2,minmax(0,1fr))}#app .tab-btn{font-size:12px;padding:0 9px}}
+@media(max-width:680px){main{padding:12px 10px 28px}#app{display:flex;flex-direction:column;gap:12px}#app>.top{order:0;width:100%;margin:0}#app>.sidebar{order:1;position:static;min-height:0;width:100%;padding:10px;border-radius:14px}#app .brandmark{padding:4px 5px 12px}.brand-symbol{width:33px;height:33px;border-radius:10px;font-size:20px}.side-label{padding:12px 5px 7px}#app .admin-nav{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px}#app .tab-btn{min-height:42px;font-size:12px}#app>.tab-heading{order:2;width:100%;margin:3px 0}#app>section.card{order:3;width:100%;padding:16px;margin:0 0 12px}.overview-title{flex-direction:column}.overview-title h2{font-size:22px}.overview-bottom{align-items:flex-start;flex-direction:column;padding:15px}.overview-bottom .row{justify-content:flex-start}.overview-bottom .btn{flex:1 1 auto}}
 </style></head><body><main>
 
 <section id="login" class="card" hidden>
@@ -116,13 +138,14 @@ input[type=file]{padding:12px;border-radius:11px;background:#0c120e;border-color
  <div class="top"><div><h1>Administração</h1><div class="stats" id="sum"></div></div>
   <div class="row" style="margin:0"><a class="btn s" href="/" style="display:grid;place-items:center;text-decoration:none;color:inherit">Ver site</a><button class="btn s" id="out">Sair</button></div></div>
 
- <nav class="admin-nav" id="adminNav" aria-label="Navegação administrativa">
+ <aside class="sidebar"><a class="brandmark" href="/"><span class="brand-symbol">P</span><span>PRIV<span class="brand-light">TEST</span><small>PAINEL DO CRIADOR</small></span></a><div class="side-label">MENU PRINCIPAL</div><nav class="admin-nav" id="adminNav" aria-label="Navegação administrativa"><button type="button" class="tab-btn" data-tab="overview" aria-selected="false"><span class="tab-icon">⌂</span> Visão geral</button><button type="button" class="tab-btn" data-tab="posts" aria-selected="true"><span class="tab-icon">▤</span> Publicações</button><button type="button" class="tab-btn" data-tab="newpost" aria-selected="false"><span class="tab-icon">＋</span> Nova publicação</button><button type="button" class="tab-btn" data-tab="gateways" aria-selected="false"><span class="tab-icon">◈</span> Pagamentos</button><button type="button" class="tab-btn" data-tab="profile" aria-selected="false"><span class="tab-icon">◉</span> Perfil</button></nav><div class="sidebar-foot"><span class="side-dot"></span> Sistema operacional<br><small>PrivTest • Área administrativa</small></div></aside>
   <button type="button" class="tab-btn" data-tab="posts" aria-selected="true"><span class="tab-icon">▤</span> Publicações</button>
   <button type="button" class="tab-btn" data-tab="newpost" aria-selected="false"><span class="tab-icon">＋</span> Nova publicação</button>
   <button type="button" class="tab-btn" data-tab="gateways" aria-selected="false"><span class="tab-icon">◈</span> Pagamentos</button>
   <button type="button" class="tab-btn" data-tab="profile" aria-selected="false"><span class="tab-icon">◉</span> Perfil</button>
  </nav>
  <div class="tab-heading" id="tabHeading">Gerencie suas publicações</div>
+ <section class="card overview" id="overview" data-panel hidden><div class="overview-title"><div><span class="eyebrow">SEU ESPAÇO</span><h2>Visão geral</h2><p class="stats">Acompanhe o conteúdo do seu perfil em um só lugar.</p></div><span class="live-pill"><i></i> Painel ativo</span></div><div class="overview-grid"><article class="metric"><span class="metric-label">Publicações totais</span><strong id="ovPosts">0</strong><small>Conteúdos cadastrados</small></article><article class="metric"><span class="metric-label">Publicações ativas</span><strong id="ovPublished">0</strong><small>Visíveis no site</small></article><article class="metric"><span class="metric-label">Imagens</span><strong id="ovImages">0</strong><small>Arquivos cadastrados</small></article><article class="metric"><span class="metric-label">Vídeos</span><strong id="ovVideos">0</strong><small>Arquivos cadastrados</small></article></div><div class="overview-bottom"><div><span class="eyebrow">PRÓXIMOS PASSOS</span><h3>Deixe seu perfil em dia</h3><p class="stats">Publique conteúdo novo ou revise os dados e preços exibidos para seus assinantes.</p></div><div class="row" style="margin-top:0"><button class="btn" type="button" data-go="newpost">＋ Nova publicação</button><button class="btn s" type="button" data-go="profile">Editar perfil</button></div></div><div class="overview-section"><div><span class="eyebrow">CONTEÚDO RECENTE</span><h3>Suas publicações</h3></div><button type="button" class="btn s" data-go="posts">Ver todas</button></div><div id="overviewRecent"></div></section>
  <section class="card" id="newpost" data-panel hidden>
   <h2 id="ptitle">Nova publicação</h2>
   <form id="pf">
@@ -184,13 +207,13 @@ function send(method,path,body,onp){return new Promise((ok,fail)=>{
  x.onerror=()=>fail(new Error("Falha de conexão."));x.send(b)})}
 
 function view(logged){$("#login").hidden=logged;$("#app").hidden=!logged}
-const tabCopy={posts:"Gerencie suas publicações",newpost:"Crie uma publicação e escolha como ela aparece no site",gateways:"Configure o provedor de pagamentos Pix",profile:"Edite as informações e os preços do seu perfil"};
+const tabCopy={overview:"Resumo do seu perfil e conteúdo",posts:"Gerencie suas publicações",newpost:"Crie uma publicação e escolha como ela aparece no site",gateways:"Configure o provedor de pagamentos Pix",profile:"Edite as informações e os preços do seu perfil"};
 function activateTab(name){
  document.querySelectorAll("#adminNav [data-tab]").forEach(b=>b.setAttribute("aria-selected",String(b.dataset.tab===name)));
  document.querySelectorAll("#app [data-panel]").forEach(p=>p.hidden=p.id!==name);
  // O formulário de configuração é parte da aba Pagamentos; nunca deve aparecer em outras abas.
  if(name!=="gateways") $("#omegaModal").hidden=true;
- $("#tabHeading").textContent=tabCopy[name]||"Painel administrativo";
+ $("#tabHeading").textContent=tabCopy[name]||"Painel administrativo"; document.querySelectorAll("[data-go]").forEach(b=>b.onclick=()=>activateTab(b.dataset.go));
 }
 $("#adminNav").addEventListener("click",e=>{const b=e.target.closest("[data-tab]");if(b)activateTab(b.dataset.tab)});
 async function load(){try{S=await send("GET","/state");view(true);draw()}catch{view(false)}}
@@ -203,7 +226,7 @@ $("#out").onclick=async()=>{await send("POST","/logout",{}).catch(()=>{});view(f
 function thumb(m){return m?(m.kind==="video"?`<video src="${m.url}#t=0.1" muted playsinline preload="metadata"></video>`:`<img src="${m.url}" alt="">`):"sem mídia"}
 function draw(){
  const P=S.posts,pub=P.filter(p=>p.published);
- $("#sum").textContent=`${pub.length} publicadas · ${pub.reduce((n,p)=>n+p.images,0)} imagens · ${pub.reduce((n,p)=>n+p.videos,0)} vídeos`;
+ const imageCount=P.reduce((n,p)=>n+p.images,0),videoCount=P.reduce((n,p)=>n+p.videos,0); $("#sum").textContent=`${pub.length} publicadas · ${imageCount} imagens · ${videoCount} vídeos`; $("#ovPosts").textContent=P.length; $("#ovPublished").textContent=pub.length; $("#ovImages").textContent=imageCount; $("#ovVideos").textContent=videoCount; $("#overviewRecent").innerHTML=P.length?P.slice(0,3).map(p=>"<div class=\"item\"><div class=\"th\">"+thumb(p.media[0])+"</div><div style=\"flex:1;min-width:0\"><span class=\"chip "+(p.published?"on":"off")+"\">"+(p.published?"Publicado":"Rascunho")+"</span><div class=\"cap\">"+(esc(p.caption)||"Publicação sem legenda")+"</div></div></div>").join(""):"<p class=\"stats\">Ainda não há publicações. Crie a primeira para começar.</p>";
  $("#list").innerHTML=P.length?P.map(p=>`<div class="item"><div class="th">${thumb(p.media[0])}</div><div style="flex:1;min-width:0">
   <div><span class="chip ${p.published?"on":"off"}">${p.published?"Publicado":"Rascunho"}</span><span class="chip">${p.locked?"Bloqueado":"Aberto"}</span><span class="chip">${p.images} fotos · ${p.videos} vídeos</span></div>
   <div class="cap">${esc(p.caption)||"<i>sem legenda</i>"}</div>
