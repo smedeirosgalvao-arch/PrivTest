@@ -399,6 +399,29 @@ app.post('/api/webhooks/omegapay', handleOmegaWebhook);
 app.post('/api/webhooks/omegapay/:identifier', handleOmegaWebhook);
 
 // Consulta pública do estado de uma cobrança para atualizar a tela após o pagamento.
+// Somente para testes: simula a confirmação do pagamento pelo painel administrativo.
+app.post('/api/admin/payments/:identifier/confirm-test', guard, (req, res) => {
+  const identifier=String(req.params.identifier||'').trim();
+  const tx=db.prepare('SELECT * FROM pix_transactions WHERE identifier=?').get(identifier);
+  if(!tx) return res.status(404).json({error:'Cobrança não encontrada.'});
+  if(tx.status==='COMPLETED') return res.json({ok:true,alreadyPaid:true});
+  if(tx.status!=='PENDING') return res.status(409).json({error:'Só é possível simular cobranças pendentes.'});
+  const now=Date.now();
+  db.exec('BEGIN IMMEDIATE');
+  try {
+    db.prepare("UPDATE pix_transactions SET status='COMPLETED',updated=? WHERE identifier=?").run(now,identifier);
+    if(tx.client_email){
+      const months=Math.max(1,Math.min(6,Number(tx.plan)||1));
+      const existing=db.prepare("SELECT MAX(expires_at) AS expires_at FROM subscriptions WHERE client_email=? AND status='ACTIVE' AND expires_at>?").get(tx.client_email,now)?.expires_at;
+      const startsAt=Math.max(now,Number(existing)||0);
+      const expiresAt=new Date(startsAt).setMonth(new Date(startsAt).getMonth()+months);
+      db.prepare("INSERT INTO subscriptions(client_email,plan,starts_at,expires_at,status,pix_identifier,created) VALUES(?,?,?,?, 'ACTIVE',?,?) ON CONFLICT(pix_identifier) DO UPDATE SET client_email=excluded.client_email,plan=excluded.plan,expires_at=excluded.expires_at,status='ACTIVE'").run(tx.client_email,String(months),startsAt,expiresAt,identifier,now);
+    }
+    db.exec('COMMIT');
+  } catch(err) { try{db.exec('ROLLBACK')}catch{} throw err; }
+  res.json({ok:true,status:'COMPLETED',simulated:true});
+});
+
 app.get('/api/pix/status/:identifier', (req, res) => {
   res.set('Cache-Control', 'no-store');
   const identifier=String(req.params.identifier||'').trim();
