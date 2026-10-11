@@ -650,7 +650,7 @@ progress{width:100%;height:6px;accent-color:var(--accent);margin-top:12px}
           <article class="kpi"><div class="kpi-top"><span>Visitas</span></div><strong id="statVisits">—</strong><small>Acessos à página pública</small></article>
           <article class="kpi"><div class="kpi-top"><span>Pagamentos confirmados</span></div><strong id="statPaid">—</strong><small id="statPixGen">Pix pagos no período</small></article>
           <article class="kpi"><div class="kpi-top"><span>Faturamento</span></div><strong id="statRevenue">—</strong><small>Soma dos pagamentos confirmados</small></article>
-          <article class="kpi"><div class="kpi-top"><span>Conversão</span></div><strong id="statConv">—</strong><small>Pagamentos sobre visitas</small></article>
+          <article class="kpi"><div class="kpi-top"><span>Conversão de Pix</span></div><strong id="statConv">—</strong><small>Pix pagos ÷ Pix gerados no período</small></article>
           <article class="kpi"><div class="kpi-top"><span>Ticket médio</span></div><strong id="statTicket">—</strong><small>Faturamento por pagamento</small></article>
           <article class="kpi"><div class="kpi-top"><span>Novos assinantes</span></div><strong id="statNew">—</strong><small>Assinaturas criadas no período</small></article>
         </div>
@@ -1127,7 +1127,7 @@ function renderCharts(){
  $("#statPaid").textContent=num(p.pixPaid);
  $("#statPixGen").textContent=num(p.pixGenerated)+" Pix gerados no período";
  $("#statRevenue").textContent=money(p.revenue);
- $("#statConv").textContent=pa(p.pixPaid,p.visits);
+ $("#statConv").textContent=pa(p.pixPaid,p.pixGenerated);
  $("#statTicket").textContent=p.pixPaid?money(p.revenue/p.pixPaid):"—";
  $("#statNew").textContent=num(p.newSubscriptions);
 
