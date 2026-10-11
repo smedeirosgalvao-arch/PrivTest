@@ -156,6 +156,8 @@ const tabCopy={posts:"Gerencie suas publicações",newpost:"Crie uma publicaçã
 function activateTab(name){
  document.querySelectorAll("#adminNav [data-tab]").forEach(b=>b.setAttribute("aria-selected",String(b.dataset.tab===name)));
  document.querySelectorAll("#app [data-panel]").forEach(p=>p.hidden=p.id!==name);
+ // O formulário de configuração é parte da aba Pagamentos; nunca deve aparecer em outras abas.
+ if(name!=="gateways") $("#omegaModal").hidden=true;
  $("#tabHeading").textContent=tabCopy[name]||"Painel administrativo";
 }
 $("#adminNav").addEventListener("click",e=>{const b=e.target.closest("[data-tab]");if(b)activateTab(b.dataset.tab)});
