@@ -157,16 +157,20 @@ app.post('/api/admin/logout', (req, res) => {
 });
 app.get('/api/admin/me', guard, (req, res) => res.json({ ok: 1 }));
 app.get('/api/admin/gateways', guard, (req,res) => {
-  const c=getGatewayConfig().omega;
+  let c=getGatewayConfig().omega;
+  if (!c.webhookToken) {
+    c={...c,webhookToken:crypto.randomBytes(32).toString('hex')};
+    saveGatewayConfig({omega:c});
+  }
   res.json({omega:{enabled:c.enabled,publicKey:c.publicKey,secretKeyConfigured:!!c.secretKey,webhookTokenConfigured:!!c.webhookToken,configured:!!(c.publicKey&&c.secretKey)}});
 });
 app.put('/api/admin/gateways', guard, (req,res) => {
   const body=req.body||{}, old=getGatewayConfig().omega;
   const publicKey=String(body.publicKey??old.publicKey).trim();
   const secretKey=String(body.secretKey||old.secretKey).trim();
-  const webhookToken=String(body.webhookToken||old.webhookToken).trim();
+  const webhookToken=String(body.webhookToken||old.webhookToken||crypto.randomBytes(32).toString('hex')).trim();
   if (publicKey.length>500 || secretKey.length>1000 || webhookToken.length>500) return res.status(400).json({error:'Credenciais invÃ¡lidas.'});
-  if (body.enabled && (!publicKey || !secretKey || !webhookToken)) return res.status(400).json({error:'Para ativar, informe chave pÃºblica, chave secreta e token de webhook.'});
+  if (body.enabled && (!publicKey || !secretKey || !webhookToken)) return res.status(400).json({error:'Para ativar, informe chave pÃºblica e chave secreta.'});
   saveGatewayConfig({omega:{enabled:body.enabled===undefined?old.enabled:!!body.enabled,publicKey,secretKey,webhookToken}});
   res.json({ok:true,...publicGatewayState()});
 });
