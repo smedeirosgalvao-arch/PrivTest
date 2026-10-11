@@ -18,6 +18,7 @@ const db = new DatabaseSync(path.join(DATA, 'site.db'));
 db.exec(`PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON;
 CREATE TABLE IF NOT EXISTS admin(id INTEGER PRIMARY KEY, email TEXT UNIQUE, salt TEXT, hash TEXT);
 CREATE TABLE IF NOT EXISTS sessions(token TEXT PRIMARY KEY, expires INTEGER);
+CREATE TABLE IF NOT EXISTS customer_sessions(token TEXT PRIMARY KEY, email TEXT NOT NULL, expires INTEGER NOT NULL);
 CREATE TABLE IF NOT EXISTS settings(k TEXT PRIMARY KEY, v TEXT);
 CREATE TABLE IF NOT EXISTS posts(id INTEGER PRIMARY KEY, caption TEXT DEFAULT '', published INTEGER DEFAULT 0, locked INTEGER DEFAULT 1, created INTEGER, updated INTEGER, fake_images INTEGER DEFAULT 0, fake_videos INTEGER DEFAULT 0);
 CREATE TABLE IF NOT EXISTS media(id INTEGER PRIMARY KEY, post_id INTEGER REFERENCES posts(id) ON DELETE CASCADE, kind TEXT, file TEXT UNIQUE, mime TEXT, size INTEGER, pos INTEGER DEFAULT 0);
@@ -53,6 +54,31 @@ const isAdmin = req => {
   return !!r && r.expires > Date.now();
 };
 const guard = (req, res, next) => isAdmin(req) ? next() : res.status(401).json({ error: 'Não autenticado.' });
+const customerEmail = req => {
+  const token=getCookie(req,'member'); if(!token)return null;
+  const s=db.prepare('SELECT email,expires FROM customer_sessions WHERE token=?').get(sha(token));
+  if(!s||s.expires<=Date.now())return null;
+  const active=db.prepare("SELECT 1 FROM subscriptions WHERE client_email=? COLLATE NOCASE AND status='ACTIVE' AND expires_at>? LIMIT 1").get(s.email,Date.now());
+  return active?s.email:null;
+};
+app.post('/api/account/login',(req,res)=>{
+  const email=String(req.body?.email||'').trim().toLowerCase(), password=String(req.body?.password||'');
+  const a=db.prepare('SELECT * FROM customer_accounts WHERE email=? COLLATE NOCASE').get(email);
+  const hash=hashPw(password,a?.salt||'0');
+  if(!a||!crypto.timingSafeEqual(Buffer.from(hash,'hex'),Buffer.from(a.password_hash,'hex')))return res.status(401).json({error:'E-mail ou senha incorretos.'});
+  const active=db.prepare("SELECT 1 FROM subscriptions WHERE client_email=? COLLATE NOCASE AND status='ACTIVE' AND expires_at>? LIMIT 1").get(email,Date.now());
+  if(!active)return res.status(403).json({error:'Não encontramos uma assinatura ativa para esta conta.'});
+  const token=crypto.randomBytes(32).toString('hex');
+  db.prepare('INSERT INTO customer_sessions(token,email,expires) VALUES(?,?,?)').run(sha(token),email,Date.now()+30*864e5);
+  res.set('Set-Cookie',`member=${token}; HttpOnly; SameSite=Strict; Path=/; Max-Age=2592000${PROD?'; Secure':''}`);
+  res.json({ok:true});
+});
+app.post('/api/account/logout',(req,res)=>{
+  const token=getCookie(req,'member');if(token)db.prepare('DELETE FROM customer_sessions WHERE token=?').run(sha(token));
+  res.set('Set-Cookie','member=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0');res.json({ok:true});
+});
+app.get('/api/account/me',(req,res)=>{const email=customerEmail(req);res.set('Cache-Control','no-store');res.json({authenticated:!!email,email});});
+
 
 // ---------- perfil ----------
 const DEF = { name: 'Seu nome', handle: '@seuperfil', bio: '', price1: 53.48, price3: 136.36, price6: 224.6, likes: 0, avatar: '', cover: '' };
@@ -623,8 +649,9 @@ app.get('/api/public', (req, res) => {
 
 app.get('/media/:file', (req, res) => {
   const f = path.basename(req.params.file), p = getProfile(), adm = isAdmin(req);
+  const member=customerEmail(req);
   const ok = adm || f === p.avatar || f === p.cover ||
-    !!db.prepare('SELECT 1 FROM media m JOIN post_media pm ON pm.media_id=m.id JOIN posts p ON p.id=pm.post_id WHERE m.file=? AND p.published=1 AND p.locked=0').get(f);
+    !!db.prepare('SELECT 1 FROM media m JOIN post_media pm ON pm.media_id=m.id JOIN posts p ON p.id=pm.post_id WHERE m.file=? AND p.published=1 AND (p.locked=0 OR ? IS NOT NULL)').get(f,member);
   if (!ok) return res.sendStatus(404);
   res.set('Cache-Control', adm ? 'private, no-cache' : 'public, max-age=300');
   res.sendFile(path.join(UP, f), e => { if (e && !res.headersSent) res.sendStatus(404); });
