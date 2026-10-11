@@ -421,6 +421,25 @@ app.post('/api/admin/payments/:identifier/confirm-test', guard, (req, res) => {
   return handleOmegaWebhook(req,res);
 });
 
+app.post('/api/admin/reset-sales', guard, (req, res) => {
+  try {
+    tx(() => {
+      db.exec(`
+        DELETE FROM customer_sessions;
+        DELETE FROM subscriptions;
+        DELETE FROM pix_transactions;
+        DELETE FROM webhook_events;
+        DELETE FROM customer_accounts;
+        DELETE FROM site_visits;
+      `);
+    });
+    res.json({ok:true,message:'Histórico de vendas limpo.'});
+  } catch (e) {
+    console.error('Falha ao limpar histórico de vendas:',e);
+    res.status(500).json({error:'Não foi possível limpar o histórico.'});
+  }
+});
+
 app.get('/api/pix/status/:identifier', (req, res) => {
   res.set('Cache-Control', 'no-store');
   const identifier=String(req.params.identifier||'').trim();
