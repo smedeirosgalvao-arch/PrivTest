@@ -371,6 +371,25 @@ app.get('/api/admin/subscriptions', guard, (req, res) => {
   }))});
 });
 
+app.get('/api/admin/payments', guard, (req, res) => {
+  const status = String(req.query.status || 'ALL').toUpperCase();
+  const allowed = new Set(['ALL','COMPLETED','PENDING','CANCELED','REFUNDED','CHARGED_BACK','FAILED']);
+  if (!allowed.has(status)) return res.status(400).json({error:'Filtro de status inválido.'});
+  const limit = Math.max(1, Math.min(100, Number.parseInt(req.query.limit,10) || 50));
+  const offset = Math.max(0, Number.parseInt(req.query.offset,10) || 0);
+  const where = status === 'ALL' ? '' : 'WHERE status = ?';
+  const params = status === 'ALL' ? [] : [status];
+  const total = db.prepare(`SELECT COUNT(*) AS n FROM pix_transactions ${where}`).get(...params).n;
+  const rows = db.prepare(`SELECT identifier,transaction_id,amount,status,client_email,plan,created,updated FROM pix_transactions ${where} ORDER BY created DESC LIMIT ? OFFSET ?`).all(...params, limit, offset);
+  const summary = db.prepare(`SELECT COUNT(*) AS total,
+    SUM(CASE WHEN status='COMPLETED' THEN 1 ELSE 0 END) AS paid,
+    SUM(CASE WHEN status='PENDING' THEN 1 ELSE 0 END) AS pending,
+    COALESCE(SUM(CASE WHEN status='COMPLETED' THEN amount ELSE 0 END),0) AS revenue
+    FROM pix_transactions`).get();
+  res.set('Cache-Control', 'no-store');
+  res.json({payments:rows,total,limit,offset,summary:{total:summary.total||0,paid:summary.paid||0,pending:summary.pending||0,revenue:summary.revenue||0}});
+});
+
 app.get('/api/admin/dashboard', guard, (req, res) => {
   const visits = db.prepare('SELECT COUNT(*) AS n FROM site_visits').get().n;
   const pix = db.prepare('SELECT COUNT(*) AS total, SUM(CASE WHEN status=\'COMPLETED\' THEN 1 ELSE 0 END) AS paid, COALESCE(SUM(CASE WHEN status=\'COMPLETED\' THEN amount ELSE 0 END),0) AS revenue FROM pix_transactions').get();
