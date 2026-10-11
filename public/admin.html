@@ -496,6 +496,8 @@ progress{width:100%;height:6px;accent-color:var(--accent);margin-top:12px}
               <input id="files" type="file" multiple hidden accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/quicktime,video/webm">
               <p class="hint" style="margin-bottom:10px">Use as setas para definir a ordem. A primeira mídia é a capa.</p>
               <div id="cur" class="mlist"></div>
+              <div class="form-grid" style="margin:14px 0"><div class="field"><label for="fakeImages">Contador de fotos desta publicação</label><input id="fakeImages" type="number" min="0" max="1000000" step="1" value="0" inputmode="numeric"></div><div class="field"><label for="fakeVideos">Contador de vídeos desta publicação</label><input id="fakeVideos" type="number" min="0" max="1000000" step="1" value="0" inputmode="numeric"></div></div>
+              <p class="hint">Esses números são adicionados às mídias reais da publicação e aparecem nos contadores.</p>
               <label class="chk"><input id="lock" type="checkbox" checked><span>Conteúdo bloqueado (o site mostra só o cadeado e os contadores)</span></label>
               <label class="chk"><input id="pub" type="checkbox"><span>Publicar no site (desmarcado salva como rascunho)</span></label>
               <progress id="bar" max="100" value="0" hidden></progress>
@@ -557,6 +559,7 @@ progress{width:100%;height:6px;accent-color:var(--accent);margin-top:12px}
                 <div class="field"><label for="p1">Preço 1 mês (R$)</label><input id="p1" type="number" step="0.01" min="0" inputmode="decimal"></div>
                 <div class="field"><label for="p3">Preço 3 meses (R$)</label><input id="p3" type="number" step="0.01" min="0" inputmode="decimal"></div>
                 <div class="field"><label for="p6">Preço 6 meses (R$)</label><input id="p6" type="number" step="0.01" min="0" inputmode="decimal"></div>
+                <div class="field"><label for="likes">Curtidas exibidas</label><input id="likes" type="number" min="0" step="1" inputmode="numeric" value="0"><p class="hint">Número exibido no perfil público.</p></div>
                 <div class="field"><label for="socialInstagram">Instagram (URL completa)</label><input id="socialInstagram" type="url" maxlength="500" placeholder="https://instagram.com/usuario" inputmode="url"></div>
                 <div class="field"><label for="socialX">X / Twitter (URL completa)</label><input id="socialX" type="url" maxlength="500" placeholder="https://x.com/usuario" inputmode="url"></div>
                 <div class="field"><label for="socialTikTok">TikTok (URL completa)</label><input id="socialTikTok" type="url" maxlength="500" placeholder="https://tiktok.com/@usuario" inputmode="url"></div>
@@ -1238,6 +1241,8 @@ function openEditor(p){
  $("#ptitle").textContent="Editar publicação";
  $("#cap").value=p.caption||"";
  $("#lock").checked=!!p.locked;
+ $("#fakeImages").value=Number(p.images||0)-p.media.filter(m=>m.kind==="image").length;
+ $("#fakeVideos").value=Number(p.videos||0)-p.media.filter(m=>m.kind==="video").length;
  $("#pub").checked=!!p.published;
  $("#pcancel").hidden=false;
  $("#psave").textContent="Salvar alterações";
@@ -1251,6 +1256,7 @@ function resetEditor(){
  edItems=[];editing=null;
  $("#pf").reset();
  $("#lock").checked=true;
+ $("#fakeImages").value=0;$("#fakeVideos").value=0;
  $("#ptitle").textContent="Nova publicação";
  $("#psave").textContent="Salvar";
  $("#pcancel").hidden=true;
@@ -1258,7 +1264,7 @@ function resetEditor(){
  renderItems();
 }
 $("#pcancel").onclick=()=>{resetEditor();activateTab("posts")};
-["cap","pub","lock"].forEach(id=>$("#"+id).addEventListener("input",renderPreview));
+["cap","pub","lock","fakeImages","fakeVideos"].forEach(id=>$("#"+id).addEventListener("input",renderPreview));
 ["cap","pub","lock"].forEach(id=>$("#"+id).addEventListener("change",renderPreview));
 
 $("#files").addEventListener("change",()=>{
@@ -1328,6 +1334,8 @@ $("#pf").onsubmit=async e=>{
  const f=new FormData();
  f.append("caption",$("#cap").value);
  f.append("locked",$("#lock").checked?"1":"0");
+ f.append("fake_images",String(Math.max(0,Math.min(1000000,Math.trunc(Number($("#fakeImages").value)||0)))));
+ f.append("fake_videos",String(Math.max(0,Math.min(1000000,Math.trunc(Number($("#fakeVideos").value)||0)))));
  f.append("published",pubOn?"1":"0");
  const order=[];let novo=0;
  for(const it of edItems){
@@ -1382,6 +1390,7 @@ $("#prf").onsubmit=async e=>{
  const f=new FormData();
  f.append("name",$("#nm").value);f.append("handle",$("#hd").value);f.append("bio",$("#bio").value);
  f.append("price1",$("#p1").value);f.append("price3",$("#p3").value);f.append("price6",$("#p6").value);
+ f.append("likes",String(Math.max(0,Math.min(1000000000,Math.trunc(Number($("#likes").value)||0)))));
  f.append("instagram",$("#socialInstagram").value.trim());f.append("x",$("#socialX").value.trim());
  f.append("tiktok",$("#socialTikTok").value.trim());f.append("telegram",$("#socialTelegram").value.trim());
  if($("#av").files[0])f.append("avatar",$("#av").files[0]);
