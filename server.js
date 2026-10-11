@@ -321,7 +321,9 @@ app.post('/api/pix/create', async (req,res) => {
     const pixCode=pix?.code||pix?.qrCode||pix?.qr_code||pix?.copyPaste||pix?.copy_paste||pix?.brCode||pix?.pixCode||pix?.pixCopyPaste||root?.pixCode||root?.pixCopyPaste||root?.pix_code||root?.qrCode||root?.qr_code||transaction?.pixInformation?.qrCode||transaction?.pix_information?.qrCode;
     const pixImage=pix?.image||pix?.qrImage||pix?.qr_image||pix?.pixImage||pix?.pixQrCode||root?.pixImage||root?.pixQrCode||root?.pix_qr_code||transaction?.pixInformation?.image||transaction?.pix_information?.image||null;
     const transactionId=root?.transactionId||root?.transaction_id||root?.paymentId||root?.payment_id||root?.id||transaction?.id;
-    const status=String(root?.transactionStatus||root?.transaction_status||root?.status||root?.transaction?.status||'PENDING').toUpperCase();
+    const providerStatus=String(root?.transactionStatus||root?.transaction_status||root?.transaction?.status||'').toUpperCase();
+    // A resposta HTTP de criação pode trazer status "OK"; isso não significa que o Pix foi pago.
+    const status=['COMPLETED','PAID','TRANSACTION_PAID'].includes(providerStatus)?'COMPLETED':'PENDING';
     if(!r.ok||!pixCode||!transactionId) {
       const providerError = root?.message || root?.error || root?.detail || root?.description || data?.message || data?.error || data?.detail || null;
       const providerCode = root?.code || root?.errorCode || data?.code || data?.errorCode || null;
