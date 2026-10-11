@@ -684,7 +684,7 @@ const num=v=>Number(v||0).toLocaleString("pt-BR");
 const money=v=>Number(v||0).toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
 const dateBR=v=>v?new Date(Number(v)).toLocaleString("pt-BR",{dateStyle:"short",timeStyle:"short"}):"—";
 
-let S={posts:[],profile:{}}, editing=null, dashboard=null, dashError="", subscriptions=[], subsError="";
+let S={posts:[],profile:{}}, editing=null, dashboard=null, dashError="", subscriptions=[], subsError="", payments=[], paymentsError="", paymentsStatus="ALL", paymentsOffset=0, paymentsTotal=0, paymentsSummary={total:0,paid:0,pending:0,revenue:0};
 const errBlock=msg=>`<div class="empty"><div><strong>Não foi possível carregar</strong><p>${esc(msg)}</p></div></div>`;
 
 function send(method,path,body,onp){return new Promise((ok,fail)=>{
@@ -873,7 +873,8 @@ async function load(){
   S=await send("GET","/state");if(S.maxMb)libMax=S.maxMb;
   try{dashboard=await send("GET","/dashboard");dashError=""}catch(e){dashboard=null;dashError=e.message||"Erro ao carregar métricas."}
   try{const subData=await send("GET","/subscriptions");subscriptions=subData.subscriptions||[];subsError=""}catch(e){subscriptions=[];subsError=e.message||"Erro ao carregar assinaturas."}
-  view(true);draw();drawSubscriptions();
+  try{await loadPayments()}catch(e){payments=[];paymentsError=e.message||"Erro ao carregar pagamentos."}
+  view(true);draw();drawSubscriptions();drawPayments();
   return true;
  }catch(e){view(false);throw e}
 }
@@ -1208,6 +1209,29 @@ function drawSubscriptions(){
   <div class="feed-item"><div class="feed-body"><div class="feed-title">${esc(x.client_email)}</div><div class="feed-meta">${esc(paymentLabel[x.payment_status]||"—")} · ${dateBR(x.starts_at)}</div></div><strong style="font-size:13.5px">${money(x.amount)}</strong></div>`).join("");
 }
 
+/* ---------- histórico de pagamentos ---------- */
+const paymentLabels={COMPLETED:["Pago","ok"],PENDING:["Pendente","warn"],CANCELED:["Cancelado","mute"],REFUNDED:["Estornado","bad"],CHARGED_BACK:["Contestado","bad"],FAILED:["Falhou","bad"]};
+async function loadPayments(){
+ const q=new URLSearchParams({status:paymentsStatus,limit:"50",offset:String(paymentsOffset)});
+ const data=await send("GET","/payments?"+q.toString());
+ payments=data.payments||[];paymentsTotal=Number(data.total)||0;paymentsSummary=data.summary||paymentsSummary;paymentsError="";
+}
+function drawPayments(){
+ $("#payTotal").textContent=num(paymentsSummary.total);$("#payPaid").textContent=num(paymentsSummary.paid);$("#payPending").textContent=num(paymentsSummary.pending);$("#payRevenue").textContent=money(paymentsSummary.revenue);
+ document.querySelectorAll("[data-pay-status]").forEach(b=>{const active=b.dataset.payStatus===paymentsStatus;b.setAttribute("aria-pressed",String(active));b.classList.toggle("active",active)});
+ const root=$("#paymentsList");
+ if(paymentsError){root.innerHTML=errBlock(paymentsError);$("#paymentsPageInfo").textContent="";$("#paymentsPrev").disabled=true;$("#paymentsNext").disabled=true;return}
+ const term=($("#paymentsSearch").value||"").trim().toLowerCase();
+ const filtered=payments.filter(p=>!term||String(p.client_email||"").toLowerCase().includes(term)||String(p.identifier||"").toLowerCase().includes(term)||String(p.transaction_id||"").toLowerCase().includes(term));
+ if(!filtered.length)root.innerHTML='<div class="empty"><div><strong>Nenhuma transação encontrada</strong><p>Quando houver cobranças Pix, elas aparecerão nesta lista.</p></div></div>';
+ else root.innerHTML='<div class="tbl"><div class="trow thead"><span>Cliente</span><span>Plano</span><span>Valor</span><span>Status</span><span>Data</span><span>Identificador</span></div>'+filtered.map(p=>{const pair=paymentLabels[p.status]||[p.status||"Desconhecido","mute"];return '<div class="trow"><span class="mail" data-l="Cliente">'+esc(p.client_email||"—")+'</span><span data-l="Plano">'+esc(p.plan||"1")+(String(p.plan)==="1"?" mês":" meses")+'</span><span data-l="Valor" class="r">'+money(p.amount)+'</span><span data-l="Status"><span class="badge '+pair[1]+'">'+esc(pair[0])+'</span></span><span data-l="Data">'+dateBR(p.created)+'</span><span data-l="Identificador" title="'+esc(p.identifier)+'" style="overflow-wrap:anywhere;font-size:11px">'+esc(p.identifier)+'</span></div>'}).join("")+'</div>';
+ const start=paymentsTotal?paymentsOffset+1:0,end=Math.min(paymentsOffset+payments.length,paymentsTotal);$("#paymentsPageInfo").textContent=term?("Busca nesta página: "+filtered.length+" resultado(s)"):(start+"–"+end+" de "+paymentsTotal);
+ $("#paymentsPrev").disabled=paymentsOffset<=0;$("#paymentsNext").disabled=paymentsOffset+payments.length>=paymentsTotal;
+}
+async function refreshPayments(reset=false){if(reset)paymentsOffset=0;$("#paymentsList").innerHTML='<p class="hint">Carregando transações…</p>';try{await loadPayments()}catch(e){paymentsError=e.message||"Erro ao carregar pagamentos."}drawPayments()}
+document.querySelectorAll("[data-pay-status]").forEach(b=>b.addEventListener("click",()=>{paymentsStatus=b.dataset.payStatus;refreshPayments(true)}));
+$("#paymentsRefresh").addEventListener("click",()=>refreshPayments(false));$("#paymentsSearch").addEventListener("input",drawPayments);
+$("#paymentsPrev").addEventListener("click",()=>{paymentsOffset=Math.max(0,paymentsOffset-50);refreshPayments(false)});$("#paymentsNext").addEventListener("click",()=>{if(paymentsOffset+50<paymentsTotal){paymentsOffset+=50;refreshPayments(false)}});
 /* ---------- gateways ---------- */
 async function loadGateways(){
  try{
