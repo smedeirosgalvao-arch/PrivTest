@@ -179,7 +179,7 @@ app.post('/api/pix/create', async (req,res) => {
   const {name,email,phone='',document='',plan='1'}=req.body||{};
   const buyerName=typeof name==='string'?name.trim():'';
   const buyerEmail=typeof email==='string'?email.trim():'';
-  if(buyerName.length<2||buyerName.length>120||!/^\\S+@\\S+\\.\\S+$/.test(buyerEmail)||buyerEmail.length>180) {
+  if(buyerName.length<2||buyerName.length>120||!/^\S+@\S+\.\S+$/.test(buyerEmail)||buyerEmail.length>180) {
     return res.status(400).json({error:'Informe nome e e-mail válidos.'});
   }
   const profile=getProfile(), prices={'1':Number(profile.price1),'3':Number(profile.price3),'6':Number(profile.price6)};
