@@ -361,6 +361,7 @@ progress{width:100%;height:6px;accent-color:var(--accent);margin-top:12px}
       <button class="nav-btn" type="button" data-tab="profile"><span class="nav-ico"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg></span>Perfil público</button>
       <button class="nav-btn" type="button" data-tab="subscribers"><span class="nav-ico"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.3 3.3-5 6.5-5s5.7 1.7 6.5 5"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7M18.5 15c1.4.6 2.4 2.1 2.8 4"/></svg></span>Assinantes</button>
       <button class="nav-btn" type="button" data-tab="payments"><span class="nav-ico"><svg viewBox="0 0 24 24"><rect x="2.5" y="5" width="19" height="14" rx="2.5"/><path d="M2.5 10h19M6 15h4"/></svg></span>Pagamentos</button>
+      <button class="nav-btn" type="button" data-tab="checkout-settings"><span class="nav-ico">₪</span>Checkout</button>
       <button class="nav-btn" type="button" data-tab="gateways"><span class="nav-ico"><svg viewBox="0 0 24 24"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z"/><path d="M12 12l8-4.5M12 12v9M12 12L4 7.5"/></svg></span>Gateways</button>
     </nav>
     <div class="nav-label">ANÁLISE</div>
@@ -622,6 +623,20 @@ progress{width:100%;height:6px;accent-color:var(--accent);margin-top:12px}
       </section>
 
       <!-- ===== GATEWAYS ===== -->
+      <section id="checkout-settings" data-panel hidden>
+        <div class="page-head"><div><h2>Checkout</h2><p class="hint">Escolha qual checkout será exibido aos clientes.</p></div></div>
+        <div class="card">
+          <div class="form-grid">
+            <div class="field full"><label for="checkoutMode">Checkout ativo</label><select id="checkoutMode"><option value="normal">Normal — cliente preenche os dados</option><option value="automatic">Automático — dados padrão e botão Gerar Pix</option></select></div>
+            <div class="field full"><label for="checkoutName">Nome padrão</label><input id="checkoutName" maxlength="120"></div>
+            <div class="field full"><label for="checkoutEmail">E-mail padrão</label><input id="checkoutEmail" type="email" maxlength="180"></div>
+            <div class="field"><label for="checkoutPhone">Telefone com DDD</label><input id="checkoutPhone" maxlength="30"></div>
+            <div class="field"><label for="checkoutDocument">CPF/CNPJ (somente números)</label><input id="checkoutDocument" maxlength="20"></div>
+          </div>
+          <p class="hint">No modo automático, todas as cobranças usarão esses dados de pagador. Configure somente dados que você tem autorização para usar.</p>
+          <div class="err" id="checkoutConfigError" role="alert"></div><button class="btn" id="checkoutConfigSave" type="button">Salvar checkout</button>
+        </div>
+      </section>
       <section id="gateways" data-panel hidden>
         <div class="page-head"><div><p class="hint">Provedores usados para criar cobranças Pix.</p></div></div>
         <div class="card">
@@ -916,7 +931,7 @@ function activateTab(name){
  });
  document.querySelectorAll("[data-panel]").forEach(p=>p.hidden=p.id!==name);
  if(name!=="gateways")closeOmega();
- if(name==="gateways")loadGateways();
+ if(name==="gateways")loadGateways(); if(name==="checkout-settings")loadCheckoutConfig();
  if(name==="library")loadLibrary();
  if(name==="posts")load().catch(()=>{});
  if(name==="stats"||name==="dashboard")setTimeout(renderCharts,0);
@@ -1458,6 +1473,16 @@ $("#paymentsList").addEventListener("click",async e=>{const b=e.target.closest("
  $("#resetSales").addEventListener("click",async()=>{if(!confirm("Isso apagará o histórico Pix, assinaturas, contas de clientes e estatísticas de visitas. Publicações, mídias, perfil, preços e gateway serão preservados. Deseja continuar?"))return;const b=$("#resetSales");b.disabled=true;b.textContent="Processando…";try{await send("POST","/reset-sales",{});paymentsOffset=0;await refreshPayments(true);await load();alert("Histórico de vendas limpo.");}catch(e){alert(e.message||"Não foi possível limpar o histórico.");}finally{b.disabled=false;b.textContent="Zerar histórico de vendas";}});
 $("#paymentsRefresh").addEventListener("click",()=>refreshPayments(false));$("#paymentsSearch").addEventListener("input",drawPayments);
 $("#paymentsPrev").addEventListener("click",()=>{paymentsOffset=Math.max(0,paymentsOffset-50);refreshPayments(false)});$("#paymentsNext").addEventListener("click",()=>{if(paymentsOffset+50<paymentsTotal){paymentsOffset+=50;refreshPayments(false)}});
+/* ---------- checkout settings ---------- */
+async function loadCheckoutConfig(){
+ try{const c=await send('GET','/checkout-config');$('#checkoutMode').value=c.mode||'normal';}catch{}
+ try{const c=await send('GET','/admin/checkout-config');$('#checkoutMode').value=c.mode||'normal';$('#checkoutName').value=c.name||'';$('#checkoutEmail').value=c.email||'';$('#checkoutPhone').value=c.phone||'';$('#checkoutDocument').value=c.document||'';}catch(e){$('#checkoutConfigError').textContent=e.message}
+}
+$('#checkoutConfigSave').onclick=async()=>{
+ $('#checkoutConfigError').textContent='';
+ try{await send('PUT','/admin/checkout-config',{mode:$('#checkoutMode').value,name:$('#checkoutName').value,email:$('#checkoutEmail').value,phone:$('#checkoutPhone').value,document:$('#checkoutDocument').value});$('#checkoutConfigError').textContent='Configuração salva.'}
+ catch(e){$('#checkoutConfigError').textContent=e.message}
+};
 /* ---------- gateways ---------- */
 async function loadGateways(){
  try{
