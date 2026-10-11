@@ -29,6 +29,11 @@ CREATE TABLE IF NOT EXISTS site_visits(id INTEGER PRIMARY KEY, visited_at INTEGE
 
 // Migrações seguras para bancos já existentes no Railway.
 for (const [column, definition] of [['fake_images','INTEGER DEFAULT 0'],['fake_videos','INTEGER DEFAULT 0']]) { try { db.exec(`ALTER TABLE posts ADD COLUMN ${column} ${definition}`); } catch (e) { if (!String(e.message).includes('duplicate column name')) throw e; } }
+db.exec(`CREATE TABLE IF NOT EXISTS post_media(post_id INTEGER NOT NULL REFERENCES posts(id) ON DELETE CASCADE, media_id INTEGER NOT NULL REFERENCES media(id) ON DELETE CASCADE, pos INTEGER DEFAULT 0, PRIMARY KEY(post_id, media_id));
+CREATE INDEX IF NOT EXISTS post_media_media ON post_media(media_id);
+INSERT OR IGNORE INTO post_media(post_id,media_id,pos) SELECT post_id,id,COALESCE(pos,0) FROM media WHERE post_id IS NOT NULL;
+UPDATE media SET post_id=NULL WHERE post_id IS NOT NULL;`);
+for (const [column, definition] of [['name','TEXT'],['created','INTEGER']]) { try { db.exec(`ALTER TABLE media ADD COLUMN ${column} ${definition}`); } catch (e) { if (!String(e.message).includes('duplicate column name')) throw e; } }
 try { db.exec("ALTER TABLE pix_transactions ADD COLUMN plan TEXT NOT NULL DEFAULT '1'"); } catch (e) { if (!String(e.message).includes('duplicate column name')) throw e; }
 
 // ---------- autenticação ----------
@@ -49,7 +54,7 @@ const isAdmin = req => {
 const guard = (req, res, next) => isAdmin(req) ? next() : res.status(401).json({ error: 'Não autenticado.' });
 
 // ---------- perfil ----------
-const DEF = { name: 'Seu nome', handle: '@seuperfil', bio: '', price1: 53.48, price3: 136.36, price6: 224.6, avatar: '', cover: '' };
+const DEF = { name: 'Seu nome', handle: '@seuperfil', bio: '', price1: 53.48, price3: 136.36, price6: 224.6, likes: 0, avatar: '', cover: '' };
 const getProfile = () => ({ ...DEF, ...JSON.parse(db.prepare("SELECT v FROM settings WHERE k='profile'").get()?.v || '{}') });
 const saveProfile = p => db.prepare("INSERT INTO settings(k,v) VALUES('profile',?) ON CONFLICT(k) DO UPDATE SET v=excluded.v").run(JSON.stringify(p));
 
@@ -69,13 +74,15 @@ function detect(f) {
   if (b[0] === 0x1A && b[1] === 0x45 && b[2] === 0xDF && b[3] === 0xA3) return ['video', 'webm', 'video/webm'];
   return null;
 }
+// Nome original apenas para exibição: sem caracteres de controle nem separadores de caminho.
+const cleanName = n => String(n || 'arquivo').replace(/[\x00-\x1f\x7f\/\\]/g, '_').trim().slice(0, 200) || 'arquivo';
 function store(files = [], only) {
   const out = [];
   try {
     for (const f of files) {
       const d = detect(f.path);
       if (!d || (only && d[0] !== only)) throw new Error(`Formato não suportado: ${f.originalname}. Use JPG, PNG, WEBP, GIF, MP4, MOV ou WEBM.`);
-      out.push({ kind: d[0], mime: d[2], size: f.size, file: crypto.randomUUID() + '.' + d[1], tmp: f.path });
+      out.push({ kind: d[0], mime: d[2], size: f.size, name: cleanName(f.originalname), file: crypto.randomUUID() + '.' + d[1], tmp: f.path });
     }
   } catch (e) { files.forEach(f => fs.rmSync(f.path, { force: true })); throw e; }
   out.forEach(o => fs.renameSync(o.tmp, path.join(UP, o.file)));
@@ -83,20 +90,67 @@ function store(files = [], only) {
 }
 const upload = multer({ dest: TMP, limits: { fileSize: MAX_MB * 1048576, files: 30 } });
 
-// ---------- posts ----------
-const mediaOf = id => db.prepare('SELECT id,kind,file FROM media WHERE post_id=? ORDER BY pos,id').all(id);
+// ---------- publicações e mídias ----------
+// `media` é o arquivo da biblioteca; `post_media` liga mídias a publicações (N:N) com a ordem em `pos`.
+const mediaOf = id => db.prepare('SELECT m.id,m.kind,m.file,m.name FROM post_media pm JOIN media m ON m.id=pm.media_id WHERE pm.post_id=? ORDER BY pm.pos,m.id').all(id);
 function shape(p, full) {
   const m = mediaOf(p.id);
   return {
     id: p.id, caption: p.caption, published: !!p.published, locked: !!p.locked, created: p.created,
     images: m.filter(x => x.kind === 'image').length + Number(p.fake_images || 0), videos: m.filter(x => x.kind === 'video').length + Number(p.fake_videos || 0),
-    media: (full || !p.locked) ? m.map(x => ({ id: x.id, kind: x.kind, url: '/media/' + x.file })) : []
+    media: (full || !p.locked) ? m.map(x => ({ id: x.id, kind: x.kind, name: x.name || null, url: '/media/' + x.file })) : []
   };
 }
-const addMedia = (postId, files) => {
-  let pos = db.prepare('SELECT COALESCE(MAX(pos),0) n FROM media WHERE post_id=?').get(postId).n;
-  for (const o of store(files)) db.prepare('INSERT INTO media(post_id,kind,file,mime,size,pos) VALUES(?,?,?,?,?,?)').run(postId, o.kind, o.file, o.mime, o.size, ++pos);
-};
+// Transação explícita (node:sqlite não tem db.transaction()).
+function tx(fn) {
+  db.exec('BEGIN IMMEDIATE');
+  try { const r = fn(); db.exec('COMMIT'); return r; }
+  catch (e) { try { db.exec('ROLLBACK'); } catch {} throw e; }
+}
+// "order": lista de "m<id>" (mídia da biblioteca) e "n<k>" (k-ésimo arquivo enviado nesta requisição).
+function parseOrder(order, nFiles) {
+  if (order === undefined || order === null || order === '') return null;
+  let list;
+  try { list = typeof order === 'string' ? JSON.parse(order) : order; } catch { throw new Error('Ordem das mídias inválida.'); }
+  if (!Array.isArray(list) || list.length > 200) throw new Error('Ordem das mídias inválida.');
+  const seenM = new Set(), seenN = new Set(), out = [];
+  for (const t of list) {
+    const s = String(t);
+    if (/^m\d+$/.test(s)) {
+      const id = Number(s.slice(1));
+      if (seenM.has(id)) throw new Error('A mesma mídia aparece duas vezes na publicação.');
+      seenM.add(id); out.push({ type: 'm', id });
+    } else if (/^n\d+$/.test(s)) {
+      const k = Number(s.slice(1));
+      if (k >= nFiles || seenN.has(k)) throw new Error('Arquivo enviado inválido na ordem das mídias.');
+      seenN.add(k); out.push({ type: 'n', k });
+    } else throw new Error('Ordem das mídias inválida.');
+  }
+  if (seenN.size !== nFiles) throw new Error('Algum arquivo enviado não foi incluído na publicação.');
+  return out;
+}
+// Aplica a lista final de mídias de uma publicação (dentro de tx). Quem sai da lista é só desvinculado; o arquivo permanece na biblioteca.
+function applyMedia(postId, seq, stored) {
+  const ins = db.prepare('INSERT INTO media(post_id,kind,file,mime,size,pos,name,created) VALUES(NULL,?,?,?,?,0,?,?)');
+  const ids = seq.map(x => {
+    if (x.type === 'm') {
+      if (!db.prepare('SELECT 1 FROM media WHERE id=?').get(x.id)) throw new Error('Mídia não encontrada na biblioteca.');
+      return x.id;
+    }
+    const o = stored[x.k];
+    return Number(ins.run(o.kind, o.file, o.mime, o.size, o.name, Date.now()).lastInsertRowid);
+  });
+  const keep = new Set(ids);
+  for (const r of db.prepare('SELECT media_id FROM post_media WHERE post_id=?').all(postId)) {
+    if (!keep.has(r.media_id)) db.prepare('DELETE FROM post_media WHERE post_id=? AND media_id=?').run(postId, r.media_id);
+  }
+  const up = db.prepare('INSERT INTO post_media(post_id,media_id,pos) VALUES(?,?,?) ON CONFLICT(post_id,media_id) DO UPDATE SET pos=excluded.pos');
+  ids.forEach((id, i) => up.run(postId, id, i));
+  return ids;
+}
+const discardStored = list => list.forEach(o => rm(o.file));
+const cleanTmp = files => files.forEach(f => fs.rmSync(f.path, { force: true }));
+
 const flag = v => (v === '1' || v === 'true' || v === 1 || v === true) ? 1 : 0;
 
 // ---------- gateways / OmegaPayments ----------
@@ -303,7 +357,7 @@ app.post('/api/webhooks/omegapay/:identifier', handleOmegaWebhook);
 
 
 app.get('/api/admin/state', guard, (req, res) =>
-  res.json({ profile: getProfile(), posts: db.prepare('SELECT * FROM posts ORDER BY created DESC').all().map(p => shape(p, true)) }));
+  res.json({ profile: getProfile(), maxMb: MAX_MB, posts: db.prepare('SELECT * FROM posts ORDER BY created DESC').all().map(p => shape(p, true)) }));
 
 app.get('/api/admin/subscriptions', guard, (req, res) => {
   const now = Date.now();
@@ -348,37 +402,104 @@ app.post('/api/admin/mock-posts', guard, (req, res) => {
 });
 
 app.post('/api/admin/posts', guard, upload.array('files'), (req, res) => {
-  const b = req.body || {}, pub = flag(b.published);
-  if (pub && !req.files?.length) { (req.files || []).forEach(f => fs.rmSync(f.path, { force: true })); throw new Error('Envie ao menos uma imagem ou vídeo para publicar.'); }
-  const now = Date.now();
-  const id = db.prepare('INSERT INTO posts(caption,published,locked,created,updated) VALUES(?,?,?,?,?)')
-    .run(String(b.caption || '').slice(0, 2000), pub, flag(b.locked ?? '1'), now, now).lastInsertRowid;
-  try { addMedia(id, req.files); } catch (e) { db.prepare('DELETE FROM posts WHERE id=?').run(id); throw e; }
-  res.json(shape(db.prepare('SELECT * FROM posts WHERE id=?').get(id), true));
+  const files = req.files || [];
+  let stored = [];
+  try {
+    const b = req.body || {}, pub = flag(b.published), locked = flag(b.locked ?? '1');
+    const explicit = parseOrder(b.order, files.length);
+    stored = store(files);
+    const now = Date.now(), caption = String(b.caption || '').slice(0, 2000);
+    const id = tx(() => {
+      const pid = Number(db.prepare('INSERT INTO posts(caption,published,locked,created,updated) VALUES(?,0,?,?,?)').run(caption, locked, now, now).lastInsertRowid);
+      const ids = applyMedia(pid, explicit ?? stored.map((_, k) => ({ type: 'n', k })), stored);
+      if (pub && !ids.length) throw new Error('Adicione ao menos uma imagem ou vídeo para publicar.');
+      db.prepare('UPDATE posts SET published=? WHERE id=?').run(pub, pid);
+      return pid;
+    });
+    res.json(shape(db.prepare('SELECT * FROM posts WHERE id=?').get(id), true));
+  } catch (e) { discardStored(stored); throw e; }
+  finally { cleanTmp(files); }
 });
-
 app.put('/api/admin/posts/:id', guard, upload.array('files'), (req, res) => {
-  const id = +req.params.id, p = db.prepare('SELECT * FROM posts WHERE id=?').get(id);
-  if (!p) { (req.files || []).forEach(f => fs.rmSync(f.path, { force: true })); return res.status(404).json({ error: 'Publicação não encontrada.' }); }
-  const b = req.body || {};
-  const remove = [].concat(b.remove || []).map(Number).filter(Boolean);
-  const gone = remove.length ? db.prepare(`SELECT file FROM media WHERE post_id=? AND id IN (${remove.map(() => '?').join(',')})`).all(id, ...remove) : [];
-  if (b.published !== undefined && flag(b.published)) {
-    const left = mediaOf(id).length - gone.length + (req.files?.length || 0);
-    if (left < 1) { (req.files || []).forEach(f => fs.rmSync(f.path, { force: true })); throw new Error('Envie ao menos uma imagem ou vídeo para publicar.'); }
-  }
-  addMedia(id, req.files);
-  if (gone.length) { db.prepare(`DELETE FROM media WHERE post_id=? AND id IN (${remove.map(() => '?').join(',')})`).run(id, ...remove); gone.forEach(g => rm(g.file)); }
-  db.prepare('UPDATE posts SET caption=?,published=?,locked=?,updated=? WHERE id=?').run(
-    b.caption !== undefined ? String(b.caption).slice(0, 2000) : p.caption,
-    b.published !== undefined ? flag(b.published) : p.published,
-    b.locked !== undefined ? flag(b.locked) : p.locked, Date.now(), id);
-  res.json(shape(db.prepare('SELECT * FROM posts WHERE id=?').get(id), true));
+  const files = req.files || [];
+  let stored = [];
+  try {
+    const id = +req.params.id, p = db.prepare('SELECT * FROM posts WHERE id=?').get(id);
+    if (!p) return res.status(404).json({ error: 'Publicação não encontrada.' });
+    const b = req.body || {};
+    const removeIds = [].concat(b.remove || []).map(Number).filter(Boolean);
+    const explicit = parseOrder(b.order, files.length);
+    stored = store(files);
+    const published = b.published !== undefined ? flag(b.published) : p.published;
+    const caption = b.caption !== undefined ? String(b.caption).slice(0, 2000) : p.caption;
+    const locked = b.locked !== undefined ? flag(b.locked) : p.locked;
+    const touchesMedia = explicit !== null || removeIds.length > 0 || stored.length > 0;
+    tx(() => {
+      const seq = explicit ?? [
+        ...mediaOf(id).map(m => m.id).filter(x => !removeIds.includes(x)).map(x => ({ type: 'm', id: x })),
+        ...stored.map((_, k) => ({ type: 'n', k }))
+      ];
+      const ids = applyMedia(id, seq, stored);
+      if (published && !ids.length && (b.published !== undefined || touchesMedia)) throw new Error('Uma publicação publicada precisa de ao menos uma imagem ou vídeo.');
+      db.prepare('UPDATE posts SET caption=?,published=?,locked=?,updated=? WHERE id=?').run(caption, published, locked, Date.now(), id);
+    });
+    res.json(shape(db.prepare('SELECT * FROM posts WHERE id=?').get(id), true));
+  } catch (e) { discardStored(stored); throw e; }
+  finally { cleanTmp(files); }
+});
+app.delete('/api/admin/posts/:id', guard, (req, res) => {
+  const id = +req.params.id;
+  if (!db.prepare('SELECT 1 FROM posts WHERE id=?').get(id)) return res.status(404).json({ error: 'Publicação não encontrada.' });
+  const drop = [];
+  tx(() => {
+    const linked = db.prepare('SELECT media_id FROM post_media WHERE post_id=?').all(id).map(r => r.media_id);
+    db.prepare('DELETE FROM posts WHERE id=?').run(id); // remove os vínculos em cascata
+    for (const mid of linked) {
+      // Mídia ainda usada por outra publicação é preservada; só some quando nenhuma publicação a usa.
+      if (db.prepare('SELECT 1 FROM post_media WHERE media_id=?').get(mid)) continue;
+      const m = db.prepare('SELECT file FROM media WHERE id=?').get(mid);
+      db.prepare('DELETE FROM media WHERE id=?').run(mid);
+      if (m) drop.push(m.file);
+    }
+  });
+  drop.forEach(rm);
+  res.json({ ok: 1, removedMedia: drop.length });
 });
 
-app.delete('/api/admin/posts/:id', guard, (req, res) => {
-  const id = +req.params.id, files = mediaOf(id);
-  db.prepare('DELETE FROM posts WHERE id=?').run(id); files.forEach(f => rm(f.file)); res.json({ ok: 1 });
+// ---------- biblioteca de mídias ----------
+// Lista, envio e exclusão. Mídia usada por alguma publicação não pode ser excluída pela biblioteca.
+app.get('/api/admin/media', guard, (req, res) => {
+  const rows = db.prepare(`SELECT m.id,m.kind,m.file,m.mime,m.size,m.name,m.created,
+      (SELECT COUNT(*) FROM post_media pm WHERE pm.media_id=m.id) AS uses
+    FROM media m ORDER BY COALESCE(m.created,0) DESC, m.id DESC`).all();
+  res.set('Cache-Control', 'no-store');
+  res.json({ maxMb: MAX_MB, items: rows.map(m => ({
+    id: m.id, kind: m.kind, mime: m.mime, size: m.size, name: m.name || null, created: m.created || null,
+    url: '/media/' + m.file, inUse: m.uses > 0, usedBy: m.uses
+  })) });
+});
+app.post('/api/admin/media', guard, upload.array('files'), (req, res) => {
+  const files = req.files || [];
+  if (!files.length) return res.status(400).json({ error: 'Selecione ao menos um arquivo.' });
+  let stored;
+  try { stored = store(files); } catch (e) { return res.status(400).json({ error: e.message }); }
+  const now = Date.now(), ins = db.prepare('INSERT INTO media(post_id,kind,file,mime,size,pos,name,created) VALUES(NULL,?,?,?,?,0,?,?)');
+  try {
+    tx(() => { for (const o of stored) ins.run(o.kind, o.file, o.mime, o.size, o.name, now); });
+  } catch (e) {
+    discardStored(stored);
+    return res.status(500).json({ error: 'Não foi possível salvar as mídias.' });
+  }
+  res.json({ ok: true, created: stored.length });
+});
+app.delete('/api/admin/media/:id', guard, (req, res) => {
+  const id = Number(req.params.id);
+  const m = Number.isInteger(id) ? db.prepare('SELECT id,file FROM media WHERE id=?').get(id) : null;
+  if (!m) return res.status(404).json({ error: 'Mídia não encontrada.' });
+  if (db.prepare('SELECT 1 FROM post_media WHERE media_id=?').get(id)) return res.status(409).json({ error: 'Esta mídia está em uma ou mais publicações. Remova-a das publicações antes de excluir.' });
+  db.prepare('DELETE FROM media WHERE id=?').run(id);
+  rm(m.file);
+  res.json({ ok: 1 });
 });
 
 app.put('/api/admin/profile', guard, upload.fields([{ name: 'avatar', maxCount: 1 }, { name: 'cover', maxCount: 1 }]), (req, res) => {
@@ -389,6 +510,7 @@ app.put('/api/admin/profile', guard, upload.fields([{ name: 'avatar', maxCount: 
     for (const k of ['avatar', 'cover']) if (req.files?.[k]?.[0]) saved[k] = store([req.files[k][0]], 'image')[0].file;
     for (const k of ['name', 'handle', 'bio']) if (typeof b[k] === 'string') p[k] = b[k].slice(0, k === 'bio' ? 600 : 80);
     for (const k of ['price1', 'price3', 'price6']) if (b[k] !== undefined && b[k] !== '' && isFinite(+b[k]) && +b[k] >= 0) p[k] = +b[k];
+    if (b.likes !== undefined && b.likes !== '' && Number.isInteger(+b.likes) && +b.likes >= 0) p.likes = +b.likes;
     for (const k in saved) { rm(p[k]); p[k] = saved[k]; }
     saveProfile(p);
   } catch (e) { all.forEach(f => fs.rmSync(f.path, { force: true })); throw e; }
@@ -400,17 +522,18 @@ app.get('/api/public', (req, res) => {
   const p = getProfile();
   const posts = db.prepare('SELECT * FROM posts WHERE published=1 ORDER BY created DESC').all().map(x => shape(x, false));
   const sum = k => posts.reduce((n, x) => n + x[k], 0);
+  const locked = posts.reduce((n, x) => n + (x.locked ? x.images + x.videos : 0), 0);
   res.set('Cache-Control', 'no-cache');
   res.json({
     profile: { ...p, avatar: p.avatar && '/media/' + p.avatar, cover: p.cover && '/media/' + p.cover },
-    counts: { posts: posts.length, images: sum('images'), videos: sum('videos') }, posts
+    counts: { posts: posts.length, images: sum('images'), videos: sum('videos'), locked, likes: Number(p.likes) || 0 }, posts
   });
 });
 
 app.get('/media/:file', (req, res) => {
   const f = path.basename(req.params.file), p = getProfile(), adm = isAdmin(req);
   const ok = adm || f === p.avatar || f === p.cover ||
-    !!db.prepare('SELECT 1 FROM media m JOIN posts p ON p.id=m.post_id WHERE m.file=? AND p.published=1 AND p.locked=0').get(f);
+    !!db.prepare('SELECT 1 FROM media m JOIN post_media pm ON pm.media_id=m.id JOIN posts p ON p.id=pm.post_id WHERE m.file=? AND p.published=1 AND p.locked=0').get(f);
   if (!ok) return res.sendStatus(404);
   res.set('Cache-Control', adm ? 'private, no-cache' : 'public, max-age=300');
   res.sendFile(path.join(UP, f), e => { if (e && !res.headersSent) res.sendStatus(404); });
