@@ -25,7 +25,8 @@ CREATE TABLE IF NOT EXISTS pix_transactions(identifier TEXT PRIMARY KEY, transac
 CREATE TABLE IF NOT EXISTS subscriptions(id INTEGER PRIMARY KEY, client_email TEXT NOT NULL, plan TEXT NOT NULL, starts_at INTEGER NOT NULL, expires_at INTEGER NOT NULL, status TEXT NOT NULL DEFAULT 'ACTIVE', pix_identifier TEXT NOT NULL UNIQUE, created INTEGER NOT NULL);
 CREATE INDEX IF NOT EXISTS subscriptions_email_status ON subscriptions(client_email,status,expires_at);
 CREATE TABLE IF NOT EXISTS webhook_events(event_key TEXT PRIMARY KEY, event TEXT NOT NULL, received INTEGER NOT NULL);
-CREATE TABLE IF NOT EXISTS site_visits(id INTEGER PRIMARY KEY, visited_at INTEGER NOT NULL);`);
+CREATE TABLE IF NOT EXISTS site_visits(id INTEGER PRIMARY KEY, visited_at INTEGER NOT NULL);
+CREATE TABLE IF NOT EXISTS customer_accounts(id INTEGER PRIMARY KEY, email TEXT NOT NULL UNIQUE COLLATE NOCASE, name TEXT NOT NULL, salt TEXT NOT NULL, password_hash TEXT NOT NULL, created INTEGER NOT NULL);`);
 
 // Migrações seguras para bancos já existentes no Railway.
 for (const [column, definition] of [['fake_images','INTEGER DEFAULT 0'],['fake_videos','INTEGER DEFAULT 0']]) { try { db.exec(`ALTER TABLE posts ADD COLUMN ${column} ${definition}`); } catch (e) { if (!String(e.message).includes('duplicate column name')) throw e; } }
@@ -241,11 +242,16 @@ app.post('/api/pix/create', async (req,res) => {
   if(!cfg.enabled || !cfg.publicKey || !cfg.secretKey || !cfg.webhookToken) {
     return res.status(503).json({error:'Pagamento Pix temporariamente indisponível. Confira a configuração do gateway.'});
   }
-  const {name,email,phone='',document='',plan='1'}=req.body||{};
+  const {name,email,password,passwordConfirm,phone='',document='',plan='1'}=req.body||{};
   const buyerName=typeof name==='string'?name.trim():'';
-  const buyerEmail=typeof email==='string'?email.trim():'';
-  if(buyerName.length<2||buyerName.length>120||!/^\S+@\S+\.\S+$/.test(buyerEmail)||buyerEmail.length>180) {
+  const buyerEmail=typeof email==='string'?email.trim().toLowerCase():'';
+  if(buyerName.length<2||buyerName.length>120||!/^\\S+@\\S+\\.\\S+$/.test(buyerEmail)||buyerEmail.length>180) {
     return res.status(400).json({error:'Informe nome e e-mail válidos.'});
+  }
+  if(typeof password!=='string'||password.length<8||password.length>200) return res.status(400).json({error:'A senha deve ter entre 8 e 200 caracteres.'});
+  if(password!==passwordConfirm) return res.status(400).json({error:'As senhas não coincidem.'});
+  if(db.prepare('SELECT 1 FROM customer_accounts WHERE email=? COLLATE NOCASE').get(buyerEmail)) {
+    return res.status(409).json({error:'Este e-mail já possui uma conta. O login de clientes será disponibilizado na próxima etapa.'});
   }
   const profile=getProfile(), prices={'1':Number(profile.price1),'3':Number(profile.price3),'6':Number(profile.price6)};
   const amount=prices[String(plan)];
@@ -292,6 +298,8 @@ app.post('/api/pix/create', async (req,res) => {
       return res.status(502).json({error:r.status===401||r.status===403?'A OmegaPayments recusou as credenciais. Confira as chaves do gateway.':r.status===400?'A OmegaPayments rejeitou os dados da cobrança. Confira a configuração do gateway.':'A OmegaPayments não retornou o código Pix esperado. Confira as chaves e tente novamente.'});
     }
     const now=Date.now();
+    const salt=crypto.randomBytes(16).toString('hex');
+    db.prepare('INSERT INTO customer_accounts(email,name,salt,password_hash,created) VALUES(?,?,?,?,?)').run(buyerEmail,buyerName,salt,hashPw(password,salt),now);
     db.prepare('INSERT INTO pix_transactions(identifier,transaction_id,amount,status,client_email,pix_code,pix_image,webhook_token,created,updated,plan) VALUES(?,?,?,?,?,?,?,?,?,?,?)')
       .run(identifier,String(transactionId),amount,status,buyerEmail,String(pixCode),String(pixImage||''),String(root?.webhookToken||data?.webhookToken||cfg.webhookToken),now,now,String(plan));
     let qrImage=pixImage?String(pixImage):null;
