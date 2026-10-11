@@ -635,6 +635,17 @@ app.put('/api/admin/profile', guard, upload.fields([{ name: 'avatar', maxCount: 
 });
 
 // ---------- público ----------
+app.get('/api/member/posts',(req,res)=>{
+  const email=customerEmail(req);
+  if(!email)return res.status(401).json({error:'Entre com uma conta que tenha assinatura ativa.'});
+  res.set('Cache-Control','no-store');
+  const posts=db.prepare('SELECT * FROM posts WHERE published=1 ORDER BY created DESC').all().map(p=>{
+    const shaped=shape(p,true);
+    return {...shaped,locked:false};
+  });
+  res.json({posts});
+});
+
 app.get('/api/public', (req, res) => {
   const p = getProfile();
   const posts = db.prepare('SELECT * FROM posts WHERE published=1 ORDER BY created DESC').all().map(x => shape(x, false));
