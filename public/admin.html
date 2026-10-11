@@ -70,6 +70,29 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,a:focus-visible{
 @media(max-width:760px){main{padding:18px 13px}#app{grid-template-columns:minmax(0,1fr);gap:13px}#app>.top,#app>section.card,#app>section.card:last-child{grid-column:1}.top{align-items:flex-start;padding-bottom:15px}.top h1{font-size:24px}.top h1:before{height:23px;width:7px;margin-right:9px}.top .row{gap:6px}.top .btn{padding:0 11px;min-height:39px;font-size:12px}.card{padding:17px;border-radius:15px}h2{margin-bottom:12px}.gateway{gap:9px}.gwicon{width:39px;height:39px}.gear{width:37px;height:37px}.item{gap:10px}.th{width:64px;height:64px}.med,.med .th{width:64px}.med .th{height:64px}.row .btn{flex:0 0 auto}}
 @media(max-width:390px){main{padding:13px 10px}.top{gap:8px}.top h1{font-size:21px}.top .stats{font-size:11px}.top .row{gap:5px}.top .btn{padding:0 9px;font-size:11px}.card{padding:14px}.gateway{gap:7px}.gwname{font-size:13px}.gwsub{font-size:10px}.switch{transform:scale(.9)}.gear{width:34px;height:34px}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;transition:none!important;animation:none!important}}
+
+/* Polimento visual responsivo */
+:root{--bg:#080b09;--panel:#111713;--panel2:#172019;--ink:#f2f7f1;--muted:#a0afa2;--line:#2b3b2f;--green:#b7ff3c}
+body{font-family:Inter,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;letter-spacing:-.012em}
+main{max-width:1180px;padding:28px 24px 56px}
+.top{align-items:center;padding-bottom:22px;border-bottom:1px solid var(--line)}
+.top h1{font-size:clamp(26px,3vw,35px);letter-spacing:-.05em}
+.admin-nav{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;padding:8px;background:#0c100d;border-color:var(--line);border-radius:15px}
+.tab-btn{font-family:inherit;font-size:13px;font-weight:650;min-height:48px;border-radius:10px;transition:background .18s,border-color .18s}
+.tab-btn[aria-selected=true]{background:linear-gradient(135deg,#25391e,#19251a);box-shadow:0 4px 18px #0003}
+.card{padding:26px;border-radius:18px;background:linear-gradient(145deg,#141c16,#0d120f);border-color:#2b3b2f;box-shadow:0 12px 35px #0002;margin-bottom:18px}
+.card h2{font-size:19px;letter-spacing:-.03em}
+label{font-size:12px;color:#b0bdb2}
+input[type=text],input[type=email],input[type=password],input[type=number],textarea{border-radius:11px;padding:14px 15px;background:#090e0b;border-color:#304034;font-size:14px}
+input[type=file]{padding:12px;border-radius:11px;background:#0c120e;border-color:#354a39}
+.btn{min-height:44px;border-radius:11px;padding:0 19px;font-family:inherit;font-size:13px;font-weight:700}
+.btn.s{background:#17211a;border-color:#334637;color:#e1ebe2}
+.gateway{gap:13px;padding:18px 0}.gwicon{width:48px;height:48px;border-radius:14px}.gear{width:42px;height:42px;border-radius:11px}
+#omegaModal{background:linear-gradient(145deg,#17221a,#101612);border-color:#3b5934}
+#profile form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:18px}
+#profile form label[for=bio],#profile form #bio,#profile form label[for=av],#profile form #av,#profile form label[for=cv],#profile form #cv,#profile form #rerr,#profile form .row{grid-column:1/-1}
+@media(max-width:760px){main{padding:15px 12px 36px}.top{padding-bottom:17px}.admin-nav{display:flex;overflow-x:auto;gap:5px;padding:6px;scroll-snap-type:x proximity}.tab-btn{flex:1 0 auto;padding:0 12px;min-height:45px;scroll-snap-align:start}.card{padding:18px;margin-bottom:14px;border-radius:16px}.card h2{font-size:18px}.gateway{gap:9px;padding:15px 0}.gwicon{width:43px;height:43px}.gear{width:39px;height:39px}#profile form{display:block}#profile form label{display:block}}
+@media(max-width:390px){main{padding:12px 9px 30px}.card{padding:15px}.tab-btn{font-size:12px;padding:0 9px}}
 </style></head><body><main>
 
 <section id="login" class="card" hidden>
