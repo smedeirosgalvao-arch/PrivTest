@@ -217,10 +217,11 @@ app.post('/api/pix/create', async (req,res) => {
     const data=await r.json().catch(()=>({}));
     // Normaliza os formatos de resposta mais comuns sem expor a resposta completa ao comprador.
     const root=data?.data&&typeof data.data==='object'?data.data:data;
-    const pix=root?.pix||root?.payment?.pix||root?.payment||{};
-    const pixCode=pix?.code||pix?.copyPaste||pix?.copy_paste||pix?.brCode||pix?.pixCode||pix?.pixCopyPaste||root?.pixCode||root?.pixCopyPaste||root?.pix_code||root?.pixCopyPaste;
-    const pixImage=pix?.image||pix?.qrCode||pix?.qr_code||pix?.pixImage||pix?.pixQrCode||root?.pixImage||root?.pixQrCode||root?.pix_qr_code||null;
-    const transactionId=root?.transactionId||root?.transaction_id||root?.paymentId||root?.payment_id||root?.id||root?.transaction?.id;
+    const transaction=root?.transaction||root?.data?.transaction||data?.transaction||{};
+    const pix=root?.pix||root?.payment?.pix||root?.payment||transaction?.pixInformation||transaction?.pix_information||root?.pixInformation||root?.pix_information||{};
+    const pixCode=pix?.code||pix?.qrCode||pix?.qr_code||pix?.copyPaste||pix?.copy_paste||pix?.brCode||pix?.pixCode||pix?.pixCopyPaste||root?.pixCode||root?.pixCopyPaste||root?.pix_code||root?.qrCode||root?.qr_code||transaction?.pixInformation?.qrCode||transaction?.pix_information?.qrCode;
+    const pixImage=pix?.image||pix?.qrImage||pix?.qr_image||pix?.pixImage||pix?.pixQrCode||root?.pixImage||root?.pixQrCode||root?.pix_qr_code||transaction?.pixInformation?.image||transaction?.pix_information?.image||null;
+    const transactionId=root?.transactionId||root?.transaction_id||root?.paymentId||root?.payment_id||root?.id||transaction?.id;
     const status=String(root?.transactionStatus||root?.transaction_status||root?.status||root?.transaction?.status||'PENDING').toUpperCase();
     if(!r.ok||!pixCode||!transactionId) {
       const providerError = root?.message || root?.error || root?.detail || root?.description || data?.message || data?.error || data?.detail || null;
