@@ -1185,7 +1185,7 @@ function draw(){
  renderPosts();
  const r=S.profile;
  $("#nm").value=r.name||"";$("#hd").value=r.handle||"";$("#bio").value=r.bio||"";
- $("#p1").value=r.price1;$("#p3").value=r.price3;$("#p6").value=r.price6;
+ $("#p1").value=r.price1;$("#p3").value=r.price3;$("#p6").value=r.price6;$("#likes").value=r.likes??0;
  $("#socialInstagram").value=r.instagram||"";$("#socialX").value=r.x||"";
  $("#socialTikTok").value=r.tiktok||"";$("#socialTelegram").value=r.telegram||"";
  updatePreview();
