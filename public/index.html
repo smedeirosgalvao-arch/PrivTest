@@ -255,7 +255,7 @@ $("#memberLoginForm").onsubmit=async e=>{
 };
 $("#memberLogout").onclick=async()=>{
  await fetch("/api/account/logout",{method:"POST"}).catch(()=>{});
- $("#memberLoginOpen").hidden=false;$("#memberLogout").hidden=true;await loadPublic();
+ $("#memberLoginOpen").hidden=false;$("#memberLogout").hidden=true;await load();
 };
 
 $("#more").onclick=()=>{bioOpen=!bioOpen;render()};
