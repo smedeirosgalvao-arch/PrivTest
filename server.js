@@ -263,8 +263,16 @@ function handleOmegaWebhook(req,res) {
   const now=Date.now();
   const insert=db.prepare('INSERT INTO webhook_events(event_key,event,received) VALUES(?,?,?)');
   const update=db.prepare('UPDATE pix_transactions SET status=?,updated=? WHERE identifier=?');
-  const txWork=db.transaction(()=>{insert.run(eventKey,event,now);update.run(status,now,identifier)});
-  txWork();
+  // node:sqlite DatabaseSync não possui db.transaction(); use transação SQL explícita.
+  try {
+    db.exec('BEGIN IMMEDIATE');
+    insert.run(eventKey,event,now);
+    update.run(status,now,identifier);
+    db.exec('COMMIT');
+  } catch (err) {
+    try { db.exec('ROLLBACK'); } catch {}
+    throw err;
+  }
   return res.status(200).json({ok:true});
 }
 app.post('/api/webhooks/omegapay', handleOmegaWebhook);
