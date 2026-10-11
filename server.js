@@ -30,11 +30,11 @@ CREATE TABLE IF NOT EXISTS site_visits(id INTEGER PRIMARY KEY, visited_at INTEGE
 // Migração segura para bancos já existentes no Railway.
 try { db.exec("ALTER TABLE pix_transactions ADD COLUMN plan TEXT NOT NULL DEFAULT '1'"); } catch (e) { if (!String(e.message).includes('duplicate column name')) throw e; }
 
-// ---------- autenticaÃ§Ã£o ----------
+// ---------- autenticação ----------
 const hashPw = (p, s) => crypto.scryptSync(p, s, 64).toString('hex');
 if (!db.prepare('SELECT 1 FROM admin').get()) {
   const { ADMIN_EMAIL: e, ADMIN_PASSWORD: p } = process.env;
-  if (!e || !p || p.length < 12) { console.error('Defina ADMIN_EMAIL e ADMIN_PASSWORD (mÃ­nimo 12 caracteres) no primeiro inÃ­cio.'); process.exit(1); }
+  if (!e || !p || p.length < 12) { console.error('Defina ADMIN_EMAIL e ADMIN_PASSWORD (mínimo 12 caracteres) no primeiro início.'); process.exit(1); }
   const s = crypto.randomBytes(16).toString('hex');
   db.prepare('INSERT INTO admin(email,salt,hash) VALUES(?,?,?)').run(e.toLowerCase(), s, hashPw(p, s));
 }
@@ -45,7 +45,7 @@ const isAdmin = req => {
   const r = db.prepare('SELECT expires FROM sessions WHERE token=?').get(sha(t));
   return !!r && r.expires > Date.now();
 };
-const guard = (req, res, next) => isAdmin(req) ? next() : res.status(401).json({ error: 'NÃ£o autenticado.' });
+const guard = (req, res, next) => isAdmin(req) ? next() : res.status(401).json({ error: 'Não autenticado.' });
 
 // ---------- perfil ----------
 const DEF = { name: 'Seu nome', handle: '@seuperfil', bio: '', price1: 53.48, price3: 136.36, price6: 224.6, avatar: '', cover: '' };
@@ -73,7 +73,7 @@ function store(files = [], only) {
   try {
     for (const f of files) {
       const d = detect(f.path);
-      if (!d || (only && d[0] !== only)) throw new Error(`Formato nÃ£o suportado: ${f.originalname}. Use JPG, PNG, WEBP, GIF, MP4, MOV ou WEBM.`);
+      if (!d || (only && d[0] !== only)) throw new Error(`Formato não suportado: ${f.originalname}. Use JPG, PNG, WEBP, GIF, MP4, MOV ou WEBM.`);
       out.push({ kind: d[0], mime: d[2], size: f.size, file: crypto.randomUUID() + '.' + d[1], tmp: f.path });
     }
   } catch (e) { files.forEach(f => fs.rmSync(f.path, { force: true })); throw e; }
@@ -99,8 +99,8 @@ const addMedia = (postId, files) => {
 const flag = v => (v === '1' || v === 'true' || v === 1 || v === true) ? 1 : 0;
 
 // ---------- gateways / OmegaPayments ----------
-// Credenciais sÃ£o criptografadas em repouso com uma chave derivada do segredo de inicializaÃ§Ã£o.
-// Em produÃ§Ã£o, defina ADMIN_PASSWORD estÃ¡vel e mantenha-o fora do cÃ³digo-fonte.
+// Credenciais são criptografadas em repouso com uma chave derivada do segredo de inicialização.
+// Em produção, defina ADMIN_PASSWORD estável e mantenha-o fora do código-fonte.
 const gatewayCipherKey = crypto.scryptSync(process.env.ADMIN_PASSWORD || 'missing-admin-password', 'site-gateway-config-v1', 32);
 function encryptSecret(value) {
   if (!value) return '';
@@ -137,8 +137,8 @@ app.use((req, res, next) => {
   next();
 });
 app.use(express.json({ limit: '100kb' }));
-// CSRF: cabeÃ§alho customizado obrigatÃ³rio em toda escrita (sem CORS, navegadores nÃ£o o enviam de outros sites) + SameSite=Strict
-app.use('/api/admin', (req, res, next) => (req.method === 'GET' || req.headers['x-csrf'] === '1') ? next() : res.status(403).json({ error: 'RequisiÃ§Ã£o invÃ¡lida.' }));
+// CSRF: cabeçalho customizado obrigatório em toda escrita (sem CORS, navegadores não o enviam de outros sites) + SameSite=Strict
+app.use('/api/admin', (req, res, next) => (req.method === 'GET' || req.headers['x-csrf'] === '1') ? next() : res.status(403).json({ error: 'Requisição inválida.' }));
 
 const tries = new Map();
 app.post('/api/admin/login', (req, res) => {
@@ -175,8 +175,8 @@ app.put('/api/admin/gateways', guard, (req,res) => {
   const publicKey=String(body.publicKey??old.publicKey).trim();
   const secretKey=String(body.secretKey||old.secretKey).trim();
   const webhookToken=String(body.webhookToken||old.webhookToken||crypto.randomBytes(32).toString('hex')).trim();
-  if (publicKey.length>500 || secretKey.length>1000 || webhookToken.length>500) return res.status(400).json({error:'Credenciais invÃ¡lidas.'});
-  if (body.enabled && (!publicKey || !secretKey || !webhookToken)) return res.status(400).json({error:'Para ativar, informe chave pÃºblica e chave secreta.'});
+  if (publicKey.length>500 || secretKey.length>1000 || webhookToken.length>500) return res.status(400).json({error:'Credenciais inválidas.'});
+  if (body.enabled && (!publicKey || !secretKey || !webhookToken)) return res.status(400).json({error:'Para ativar, informe chave pública e chave secreta.'});
   saveGatewayConfig({omega:{enabled:body.enabled===undefined?old.enabled:!!body.enabled,publicKey,secretKey,webhookToken}});
   res.json({ok:true,...publicGatewayState()});
 });
@@ -325,7 +325,7 @@ app.get('/api/admin/dashboard', guard, (req, res) => {
 
 app.post('/api/admin/posts', guard, upload.array('files'), (req, res) => {
   const b = req.body || {}, pub = flag(b.published);
-  if (pub && !req.files?.length) { (req.files || []).forEach(f => fs.rmSync(f.path, { force: true })); throw new Error('Envie ao menos uma imagem ou vÃ­deo para publicar.'); }
+  if (pub && !req.files?.length) { (req.files || []).forEach(f => fs.rmSync(f.path, { force: true })); throw new Error('Envie ao menos uma imagem ou vídeo para publicar.'); }
   const now = Date.now();
   const id = db.prepare('INSERT INTO posts(caption,published,locked,created,updated) VALUES(?,?,?,?,?)')
     .run(String(b.caption || '').slice(0, 2000), pub, flag(b.locked ?? '1'), now, now).lastInsertRowid;
@@ -335,13 +335,13 @@ app.post('/api/admin/posts', guard, upload.array('files'), (req, res) => {
 
 app.put('/api/admin/posts/:id', guard, upload.array('files'), (req, res) => {
   const id = +req.params.id, p = db.prepare('SELECT * FROM posts WHERE id=?').get(id);
-  if (!p) { (req.files || []).forEach(f => fs.rmSync(f.path, { force: true })); return res.status(404).json({ error: 'PublicaÃ§Ã£o nÃ£o encontrada.' }); }
+  if (!p) { (req.files || []).forEach(f => fs.rmSync(f.path, { force: true })); return res.status(404).json({ error: 'Publicação não encontrada.' }); }
   const b = req.body || {};
   const remove = [].concat(b.remove || []).map(Number).filter(Boolean);
   const gone = remove.length ? db.prepare(`SELECT file FROM media WHERE post_id=? AND id IN (${remove.map(() => '?').join(',')})`).all(id, ...remove) : [];
   if (b.published !== undefined && flag(b.published)) {
     const left = mediaOf(id).length - gone.length + (req.files?.length || 0);
-    if (left < 1) { (req.files || []).forEach(f => fs.rmSync(f.path, { force: true })); throw new Error('Envie ao menos uma imagem ou vÃ­deo para publicar.'); }
+    if (left < 1) { (req.files || []).forEach(f => fs.rmSync(f.path, { force: true })); throw new Error('Envie ao menos uma imagem ou vídeo para publicar.'); }
   }
   addMedia(id, req.files);
   if (gone.length) { db.prepare(`DELETE FROM media WHERE post_id=? AND id IN (${remove.map(() => '?').join(',')})`).run(id, ...remove); gone.forEach(g => rm(g.file)); }
@@ -371,7 +371,7 @@ app.put('/api/admin/profile', guard, upload.fields([{ name: 'avatar', maxCount: 
   res.json(p);
 });
 
-// ---------- pÃºblico ----------
+// ---------- público ----------
 app.get('/api/public', (req, res) => {
   const p = getProfile();
   const posts = db.prepare('SELECT * FROM posts WHERE published=1 ORDER BY created DESC').all().map(x => shape(x, false));
