@@ -19,7 +19,7 @@ db.exec(`PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON;
 CREATE TABLE IF NOT EXISTS admin(id INTEGER PRIMARY KEY, email TEXT UNIQUE, salt TEXT, hash TEXT);
 CREATE TABLE IF NOT EXISTS sessions(token TEXT PRIMARY KEY, expires INTEGER);
 CREATE TABLE IF NOT EXISTS settings(k TEXT PRIMARY KEY, v TEXT);
-CREATE TABLE IF NOT EXISTS posts(id INTEGER PRIMARY KEY, caption TEXT DEFAULT '', published INTEGER DEFAULT 0, locked INTEGER DEFAULT 1, created INTEGER, updated INTEGER);
+CREATE TABLE IF NOT EXISTS posts(id INTEGER PRIMARY KEY, caption TEXT DEFAULT '', published INTEGER DEFAULT 0, locked INTEGER DEFAULT 1, created INTEGER, updated INTEGER, fake_images INTEGER DEFAULT 0, fake_videos INTEGER DEFAULT 0);
 CREATE TABLE IF NOT EXISTS media(id INTEGER PRIMARY KEY, post_id INTEGER REFERENCES posts(id) ON DELETE CASCADE, kind TEXT, file TEXT UNIQUE, mime TEXT, size INTEGER, pos INTEGER DEFAULT 0);
 CREATE TABLE IF NOT EXISTS pix_transactions(identifier TEXT PRIMARY KEY, transaction_id TEXT, amount REAL NOT NULL, status TEXT NOT NULL, client_email TEXT, pix_code TEXT, pix_image TEXT, webhook_token TEXT, created INTEGER NOT NULL, updated INTEGER NOT NULL, plan TEXT NOT NULL DEFAULT '1');
 CREATE TABLE IF NOT EXISTS subscriptions(id INTEGER PRIMARY KEY, client_email TEXT NOT NULL, plan TEXT NOT NULL, starts_at INTEGER NOT NULL, expires_at INTEGER NOT NULL, status TEXT NOT NULL DEFAULT 'ACTIVE', pix_identifier TEXT NOT NULL UNIQUE, created INTEGER NOT NULL);
@@ -27,7 +27,8 @@ CREATE INDEX IF NOT EXISTS subscriptions_email_status ON subscriptions(client_em
 CREATE TABLE IF NOT EXISTS webhook_events(event_key TEXT PRIMARY KEY, event TEXT NOT NULL, received INTEGER NOT NULL);
 CREATE TABLE IF NOT EXISTS site_visits(id INTEGER PRIMARY KEY, visited_at INTEGER NOT NULL);`);
 
-// Migração segura para bancos já existentes no Railway.
+// Migrações seguras para bancos já existentes no Railway.
+for (const [column, definition] of [['fake_images','INTEGER DEFAULT 0'],['fake_videos','INTEGER DEFAULT 0']]) { try { db.exec(`ALTER TABLE posts ADD COLUMN ${column} ${definition}`); } catch (e) { if (!String(e.message).includes('duplicate column name')) throw e; } }
 try { db.exec("ALTER TABLE pix_transactions ADD COLUMN plan TEXT NOT NULL DEFAULT '1'"); } catch (e) { if (!String(e.message).includes('duplicate column name')) throw e; }
 
 // ---------- autenticação ----------
@@ -88,7 +89,7 @@ function shape(p, full) {
   const m = mediaOf(p.id);
   return {
     id: p.id, caption: p.caption, published: !!p.published, locked: !!p.locked, created: p.created,
-    images: m.filter(x => x.kind === 'image').length, videos: m.filter(x => x.kind === 'video').length,
+    images: m.filter(x => x.kind === 'image').length + Number(p.fake_images || 0), videos: m.filter(x => x.kind === 'video').length + Number(p.fake_videos || 0),
     media: (full || !p.locked) ? m.map(x => ({ id: x.id, kind: x.kind, url: '/media/' + x.file })) : []
   };
 }
@@ -321,6 +322,22 @@ app.get('/api/admin/dashboard', guard, (req, res) => {
   const pix = db.prepare('SELECT COUNT(*) AS total, SUM(CASE WHEN status=\'COMPLETED\' THEN 1 ELSE 0 END) AS paid, COALESCE(SUM(CASE WHEN status=\'COMPLETED\' THEN amount ELSE 0 END),0) AS revenue FROM pix_transactions').get();
   res.set('Cache-Control', 'no-store');
   res.json({ visits, pixGenerated: pix.total || 0, pixPaid: pix.paid || 0, revenue: pix.revenue || 0 });
+});
+
+app.post('/api/admin/mock-posts', guard, (req, res) => {
+  const count = Math.max(1, Math.min(30, Math.floor(Number(req.body?.count) || 5)));
+  const now = Date.now();
+  const insert = db.prepare('INSERT INTO posts(caption,published,locked,created,updated,fake_images,fake_videos) VALUES(?,1,1,?,?,?,?)');
+  const captions = ['Prévia de conteúdo exclusivo','Novidades para assinantes','Um pouco do que vem por aí','Conteúdo especial','Atualização do perfil'];
+  const make = db.transaction(() => {
+    for (let i=0;i<count;i++) {
+      const images = 1 + Math.floor(Math.random()*4);
+      const videos = Math.floor(Math.random()*3);
+      insert.run('[DEMONSTRAÇÃO] ' + captions[i%captions.length], now-i, now-i, images, videos);
+    }
+  });
+  make();
+  res.json({ok:true,created:count});
 });
 
 app.post('/api/admin/posts', guard, upload.array('files'), (req, res) => {
