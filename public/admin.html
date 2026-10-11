@@ -138,7 +138,7 @@ input[type=file]{padding:12px;border-radius:11px;background:#0c120e;border-color
  <div class="top"><div><h1>Administração</h1><div class="stats" id="sum"></div></div>
   <div class="row" style="margin:0"><a class="btn s" href="/" style="display:grid;place-items:center;text-decoration:none;color:inherit">Ver site</a><button class="btn s" id="out">Sair</button></div></div>
 
- <aside class="sidebar"><a class="brandmark" href="/"><span class="brand-symbol">P</span><span>PRIV<span class="brand-light">TEST</span><small>PAINEL DO CRIADOR</small></span></a><div class="side-label">MENU PRINCIPAL</div><nav class="admin-nav" id="adminNav" aria-label="Navegação administrativa"><button type="button" class="tab-btn" data-tab="overview" aria-selected="false"><span class="tab-icon">⌂</span> Visão geral</button><button type="button" class="tab-btn" data-tab="posts" aria-selected="true"><span class="tab-icon">▤</span> Publicações</button><button type="button" class="tab-btn" data-tab="newpost" aria-selected="false"><span class="tab-icon">＋</span> Nova publicação</button><button type="button" class="tab-btn" data-tab="gateways" aria-selected="false"><span class="tab-icon">◈</span> Pagamentos</button><button type="button" class="tab-btn" data-tab="profile" aria-selected="false"><span class="tab-icon">◉</span> Perfil</button></nav><div class="sidebar-foot"><span class="side-dot"></span> Sistema operacional<br><small>PrivTest • Área administrativa</small></div></aside>
+ <aside class="sidebar"><a class="brandmark" href="/"><span class="brand-symbol">P</span><span>PRIV<span class="brand-light">TEST</span><small>PAINEL DO CRIADOR</small></span></a><div class="side-label">MENU PRINCIPAL</div><nav class="admin-nav" id="adminNav" aria-label="Navegação administrativa"><button type="button" class="tab-btn" data-tab="overview" aria-selected="false"><span class="tab-icon">⌂</span> Visão geral</button><button type="button" class="tab-btn" data-tab="posts" aria-selected="true"><span class="tab-icon">▤</span> Publicações</button><button type="button" class="tab-btn" data-tab="newpost" aria-selected="false"><span class="tab-icon">＋</span> Nova publicação</button><button type="button" class="tab-btn" data-tab="gateways" aria-selected="false"><span class="tab-icon">◈</span> Pagamentos</button><button type="button" class="tab-btn" data-tab="subscriptions" aria-selected="false"><span class="tab-icon">◎</span> Assinaturas</button><button type="button" class="tab-btn" data-tab="profile" aria-selected="false"><span class="tab-icon">◉</span> Perfil</button></nav><div class="sidebar-foot"><span class="side-dot"></span> Sistema operacional<br><small>PrivTest • Área administrativa</small></div></aside>
  <div class="tab-heading" id="tabHeading">Gerencie suas publicações</div>
  <section class="card overview" id="overview" data-panel hidden><div class="overview-title"><div><span class="eyebrow">SEU ESPAÇO</span><h2>Visão geral</h2><p class="stats">Acompanhe os acessos e os pagamentos confirmados em um só lugar.</p></div><span class="live-pill"><i></i> Painel ativo</span></div><div class="overview-grid"><article class="metric"><span class="metric-label">Visitas ao site</span><strong id="ovVisits">0</strong><small>Acessos à página pública</small></article><article class="metric"><span class="metric-label">Pix gerados</span><strong id="ovPixGenerated">0</strong><small>Cobranças registradas</small></article><article class="metric"><span class="metric-label">Pix pagos</span><strong id="ovPixPaid">0</strong><small>Pagamentos confirmados</small></article><article class="metric"><span class="metric-label">Valor recebido</span><strong id="ovRevenue">R$ 0,00</strong><small>Transações confirmadas</small></article></div><div class="overview-bottom"><div><span class="eyebrow">PRÓXIMOS PASSOS</span><h3>Deixe seu perfil em dia</h3><p class="stats">Publique conteúdo novo ou revise os dados e preços exibidos para seus assinantes.</p></div><div class="row" style="margin-top:0"><button class="btn" type="button" data-go="newpost">＋ Nova publicação</button><button class="btn s" type="button" data-go="profile">Editar perfil</button></div></div><div class="overview-section"><div><span class="eyebrow">CONTEÚDO RECENTE</span><h3>Suas publicações</h3></div><button type="button" class="btn s" data-go="posts">Ver todas</button></div><div id="overviewRecent"></div></section>
  <section class="card" id="newpost" data-panel hidden>
@@ -155,6 +155,7 @@ input[type=file]{padding:12px;border-radius:11px;background:#0c120e;border-color
   </form>
  </section>
 
+ <section class="card" id="subscriptions" data-panel hidden><h2>Assinaturas</h2><p class="stats">Confira os planos comprados, a confirmação do Pix e a validade de cada assinatura.</p><div id="subscriptionsList"><p class="stats">Carregando assinaturas…</p></div></section>
  <section class="card" id="gateways" data-panel hidden><h2>Gateways de Pagamento</h2><p class="stats">Gerencie os provedores usados para criar cobranças Pix.</p>
   <div class="gateway"><div class="gwicon">Ω</div><div class="gwbody"><div class="gwname">OmegaPayments</div><div class="gwsub" id="omegaStatus">Verificando configuração…</div><div class="status" id="omegaConn"></div></div>
    <label class="switch" aria-label="Ativar OmegaPayments"><input id="omegaEnabled" type="checkbox"><span class="slider"></span></label><button class="gear" id="omegaSettings" aria-label="Configurar OmegaPayments" title="Configurar">⚙</button>
@@ -190,7 +191,7 @@ input[type=file]{padding:12px;border-radius:11px;background:#0c120e;border-color
 <script>
 const $=s=>document.querySelector(s);
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-let S={posts:[],profile:{}},editing=null, dashboard={visits:0,pixGenerated:0,pixPaid:0,revenue:0};
+let S={posts:[],profile:{}},editing=null, dashboard={visits:0,pixGenerated:0,pixPaid:0,revenue:0}, subscriptions=[];
 
 function send(method,path,body,onp){return new Promise((ok,fail)=>{
  const x=new XMLHttpRequest();x.open(method,"/api/admin"+path);x.withCredentials=true;x.setRequestHeader("X-CSRF","1");
@@ -202,7 +203,7 @@ function send(method,path,body,onp){return new Promise((ok,fail)=>{
  x.onerror=()=>fail(new Error("Falha de conexão."));x.send(b)})}
 
 function view(logged){$("#login").hidden=logged;$("#app").hidden=!logged}
-const tabCopy={overview:"Resumo do seu perfil e conteúdo",posts:"Gerencie suas publicações",newpost:"Crie uma publicação e escolha como ela aparece no site",gateways:"Configure o provedor de pagamentos Pix",profile:"Edite as informações e os preços do seu perfil"};
+const tabCopy={overview:"Resumo do seu perfil e conteúdo",posts:"Gerencie suas publicações",newpost:"Crie uma publicação e escolha como ela aparece no site",gateways:"Configure o provedor de pagamentos Pix",subscriptions:"Acompanhe os planos e a validade dos assinantes",profile:"Edite as informações e os preços do seu perfil"};
 function activateTab(name){
  document.querySelectorAll("#adminNav [data-tab]").forEach(b=>b.setAttribute("aria-selected",String(b.dataset.tab===name)));
  document.querySelectorAll("#app [data-panel]").forEach(p=>p.hidden=p.id!==name);
@@ -211,7 +212,7 @@ function activateTab(name){
  $("#tabHeading").textContent=tabCopy[name]||"Painel administrativo"; document.querySelectorAll("[data-go]").forEach(b=>b.onclick=()=>activateTab(b.dataset.go));
 }
 $("#adminNav").addEventListener("click",e=>{const b=e.target.closest("[data-tab]");if(b)activateTab(b.dataset.tab)});
-async function load(){try{S=await send("GET","/state");try{dashboard=await send("GET","/dashboard")}catch(e){console.warn("Falha ao carregar métricas:",e.message)}view(true);draw();return true}catch(e){view(false);throw e}}
+async function load(){try{S=await send("GET","/state");try{dashboard=await send("GET","/dashboard")}catch(e){console.warn("Falha ao carregar métricas:",e.message)}try{const subData=await send("GET","/subscriptions");subscriptions=subData.subscriptions||[]}catch(e){console.warn("Falha ao carregar assinaturas:",e.message);subscriptions=[]}view(true);draw();drawSubscriptions();return true}catch(e){view(false);throw e}}
 
 $("#lbtn").onclick=async()=>{$("#lerr").textContent="";
  const button=$("#lbtn");button.disabled=true;button.textContent="Entrando…";
@@ -231,6 +232,15 @@ function draw(){
   <div class="cap">${esc(p.caption)||"<i>sem legenda</i>"}</div>
   <div class="row" style="margin-top:8px"><button class="btn s" data-e="${p.id}">Editar</button><button class="btn s" data-t="${p.id}">${p.published?"Despublicar":"Publicar"}</button><button class="btn d" data-d="${p.id}">Excluir</button></div></div></div>`).join(""):"<p class='stats'>Nenhuma publicação ainda.</p>";
  const r=S.profile;$("#nm").value=r.name;$("#hd").value=r.handle;$("#bio").value=r.bio;$("#p1").value=r.price1;$("#p3").value=r.price3;$("#p6").value=r.price6;
+}
+function drawSubscriptions(){
+ const root=$("#subscriptionsList");
+ if(!subscriptions.length){root.innerHTML='<p class="stats">Nenhuma assinatura registrada ainda. As assinaturas aparecerão aqui quando um Pix for confirmado.</p>';return}
+ const money=v=>Number(v||0).toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
+ const date=v=>v?new Date(Number(v)).toLocaleString("pt-BR",{dateStyle:"short",timeStyle:"short"}):"—";
+ const statusLabel={ACTIVE:"Ativa",EXPIRED:"Expirada",REVOKED:"Revogada"};
+ const paymentLabel={COMPLETED:"Pago",PENDING:"Pendente",CANCELED:"Cancelado",REFUNDED:"Estornado",CHARGED_BACK:"Contestado",FAILED:"Falhou"};
+ root.innerHTML='<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;min-width:720px"><thead><tr><th style="text-align:left;padding:12px">Cliente</th><th style="text-align:left;padding:12px">Plano</th><th style="text-align:left;padding:12px">Pagamento</th><th style="text-align:left;padding:12px">Início</th><th style="text-align:left;padding:12px">Validade</th><th style="text-align:left;padding:12px">Situação</th><th style="text-align:right;padding:12px">Valor</th></tr></thead><tbody>'+subscriptions.map(x=>'<tr style="border-top:1px solid var(--line)"><td style="padding:12px">'+esc(x.client_email)+'</td><td style="padding:12px">'+esc(x.plan)+' '+(String(x.plan)==="1"?"mês":"meses")+'</td><td style="padding:12px">'+esc(paymentLabel[x.payment_status]||x.payment_status||"—")+'</td><td style="padding:12px">'+date(x.starts_at)+'</td><td style="padding:12px">'+date(x.expires_at)+'</td><td style="padding:12px">'+esc(statusLabel[x.status]||x.status)+'</td><td style="padding:12px;text-align:right">'+money(x.amount)+'</td></tr>').join("")+'</tbody></table></div>';
 }
 function reset(){editing=null;$("#pf").reset();$("#lock").checked=true;$("#cur").innerHTML="";$("#ptitle").textContent="Nova publicação";$("#pcancel").hidden=true;$("#perr").textContent=""}
 $("#pcancel").onclick=reset;
