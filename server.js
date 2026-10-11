@@ -394,7 +394,7 @@ app.get('/api/admin/dashboard', guard, (req, res) => {
   const visits = db.prepare('SELECT COUNT(*) AS n FROM site_visits').get().n;
   const pix = db.prepare('SELECT COUNT(*) AS total, SUM(CASE WHEN status=\'COMPLETED\' THEN 1 ELSE 0 END) AS paid, COALESCE(SUM(CASE WHEN status=\'COMPLETED\' THEN amount ELSE 0 END),0) AS revenue FROM pix_transactions').get();
   res.set('Cache-Control', 'no-store');
-  res.json({ visits, pixGenerated: pix.total || 0, pixPaid: pix.paid || 0, revenue: pix.revenue || 0 });
+  res.json({ visits, pixGenerated: pix.total || 0, pixPaid: pix.paid || 0, revenue: pix.revenue || 0, series: [] });
 });
 
 app.post('/api/admin/mock-posts', guard, (req, res) => {
