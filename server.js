@@ -2,6 +2,7 @@ import express from 'express';
 import multer from 'multer';
 import { DatabaseSync } from 'node:sqlite';
 import crypto from 'node:crypto';
+import QRCode from 'qrcode';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -233,8 +234,13 @@ app.post('/api/pix/create', async (req,res) => {
     const now=Date.now();
     db.prepare('INSERT INTO pix_transactions(identifier,transaction_id,amount,status,client_email,pix_code,pix_image,webhook_token,created,updated) VALUES(?,?,?,?,?,?,?,?,?,?)')
       .run(identifier,String(transactionId),amount,status,buyerEmail,String(pixCode),String(pixImage||''),String(root?.webhookToken||data?.webhookToken||cfg.webhookToken),now,now);
+    let qrImage=pixImage?String(pixImage):null;
+    if(!qrImage) {
+      try { qrImage=await QRCode.toDataURL(String(pixCode),{width:320,margin:2,errorCorrectionLevel:'M'}); }
+      catch(qrError) { console.error('Falha ao gerar QR Code Pix no servidor',qrError?.message||'erro'); }
+    }
     res.set('Cache-Control','no-store');
-    res.json({ok:true,identifier,transactionId:String(transactionId),amount,pix:{code:String(pixCode),image:pixImage?String(pixImage):null,expiresAt:pix?.expiresAt||pix?.expires_at||root?.expiresAt||root?.expires_at||dueDate}});
+    res.json({ok:true,identifier,transactionId:String(transactionId),amount,pix:{code:String(pixCode),image:qrImage,expiresAt:pix?.expiresAt||pix?.expires_at||root?.expiresAt||root?.expires_at||dueDate}});
   } catch (e) {
     console.error('OmegaPayments Pix: falha de conexão',e?.name||'Error',e?.cause?.code||'');
     return res.status(502).json({error:e?.name==='TimeoutError'?'A OmegaPayments demorou para responder. Verifique as cobranças antes de tentar novamente.':'Não foi possível conectar à OmegaPayments. Tente novamente em instantes.'});
