@@ -254,8 +254,8 @@ app.get('/api/checkout-config',(req,res)=>{const c=getCheckoutConfig();res.set('
 app.get('/api/admin/checkout-config',guard,(req,res)=>res.json(getCheckoutConfig()));
 app.put('/api/admin/checkout-config',guard,(req,res)=>{
  const b=req.body||{},mode=b.mode==='automatic'?'automatic':'normal';
- const c={mode,name:String(b.name||'').trim().slice(0,120),email:String(b.email||'').trim().toLowerCase().slice(0,180),phone:String(b.phone||'').trim().slice(0,30),document:String(b.document||'').replace(/\\D/g,'').slice(0,20)};
- if(mode==='automatic'&&(!c.name||!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(c.email)||!c.phone||!c.document))return res.status(400).json({error:'Preencha nome, e-mail, telefone e CPF/CNPJ para ativar o checkout automático.'});
+  const c={mode,name:String(b.name||'').trim().slice(0,120),email:String(b.email||'').trim().toLowerCase().slice(0,180),phone:String(b.phone||'').trim().slice(0,30),document:String(b.document||'').replace(/\D/g,'').slice(0,20)};
+  if(mode==='automatic'&&(!c.name||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(c.email)||!c.phone||!c.document))return res.status(400).json({error:'Preencha nome, e-mail, telefone e CPF/CNPJ para ativar o checkout automático.'});
  db.prepare("INSERT INTO settings(k,v) VALUES('checkout',?) ON CONFLICT(k) DO UPDATE SET v=excluded.v").run(JSON.stringify(c));res.json({ok:true});
 });
 
