@@ -13,7 +13,7 @@ box-sizing:border-box;padding-bottom:env(safe-area-inset-bottom,0px)}
 body{margin:0;background:var(--bg);color:var(--ink);font-family:Poppins,system-ui,sans-serif;overflow-x:hidden}
 .wrap{max-width:480px;margin:0 auto;padding:0 16px 32px}
 header{position:sticky;top:0;z-index:20;background:var(--bg);border-bottom:1px solid var(--line);height:calc(64px + env(safe-area-inset-top,0px));padding-top:env(safe-area-inset-top,0px);display:flex;align-items:center;justify-content:center;margin:0 -16px 8px}
-.logo{font-weight:600;font-size:30px;letter-spacing:-1.5px}.privacy-logo{display:block;width:142px;height:auto;max-height:38px;object-fit:contain}
+.logo{font-weight:700;font-size:30px;letter-spacing:-1.6px}.privacy-logo{display:block;width:auto;height:auto;max-height:none;object-fit:contain;color:#080808;line-height:1;font-family:Poppins,system-ui,sans-serif}.privacy-logo span{color:#f28b00}
 .globe{position:absolute;right:16px;top:calc(8px + env(safe-area-inset-top,0px));width:48px;height:48px;border-radius:50%;border:0;background:transparent;display:grid;place-items:center;color:var(--ink);cursor:pointer}
 .globe[aria-expanded=true]{background:#ece8e2}
 .menu{position:absolute;right:16px;top:calc(60px + env(safe-area-inset-top,0px));width:min(260px,calc(100vw - 32px));background:#fff;border-radius:16px;padding:8px;box-shadow:0 6px 24px rgba(0,0,0,.08);display:none}
@@ -93,7 +93,7 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--orange);outline-off
 <body>
 <div class="wrap">
 <header>
- <img class="logo privacy-logo" src="https://privacy.com.br/assets/v10/images/logo-black.svg" alt="Privacy" />
+ <div class="logo privacy-logo" aria-label="Privacy">privacy<span>.</span></div>
  <button class="globe" id="gb" aria-label="Idioma" aria-expanded="false" aria-haspopup="true">
   <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2c3 3 3 17 0 20M12 2c-3 3-3 17 0 20"/></svg>
  </button>
