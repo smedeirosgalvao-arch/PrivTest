@@ -121,7 +121,9 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--orange);outline-off
   <form id="checkoutForm">
    <label for="buyerName">Nome</label><input id="buyerName" name="name" autocomplete="name" required minlength="2" maxlength="120" placeholder="Seu nome">
    <label for="buyerEmail">E-mail</label><input id="buyerEmail" name="email" type="email" autocomplete="email" required maxlength="180" placeholder="voce@email.com">
-   <p>NÃ£o Ã© necessÃ¡rio criar uma conta no site. Esses dados sÃ£o enviados ao provedor para gerar a cobranÃ§a.</p>
+   <label for="buyerPhone">Telefone com DDD</label><input id="buyerPhone" name="phone" type="tel" autocomplete="tel" required maxlength="30" placeholder="(79) 99999-9999">
+   <label for="buyerDocument">CPF ou CNPJ</label><input id="buyerDocument" name="document" inputmode="numeric" autocomplete="off" required maxlength="30" placeholder="Somente números">
+   <p>NÃ£o Ã© necessÃ¡rio criar uma conta no site. Nome, e-mail, telefone e CPF/CNPJ sÃ£o enviados ao provedor para gerar a cobranÃ§a.</p>
    <p class="checkout-error" id="checkoutError" role="alert"></p>
    <div class="checkout-actions"><button class="secondary" type="button" id="checkoutCancel">Cancelar</button><button class="primary" type="submit" id="checkoutSubmit">Gerar Pix</button></div>
   </form>
@@ -208,7 +210,7 @@ document.addEventListener("keydown",e=>{if(e.key==="Escape")closeCheckout()});
 $("#checkoutForm").addEventListener("submit",async e=>{
  e.preventDefault();const submit=$("#checkoutSubmit"),error=$("#checkoutError");error.textContent="";submit.disabled=true;submit.textContent="Gerandoâ¦";
  try{
-  const response=await fetch("/api/pix/create",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({name:$("#buyerName").value.trim(),email:$("#buyerEmail").value.trim(),plan:selectedPlan})});
+  const response=await fetch("/api/pix/create",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({name:$("#buyerName").value.trim(),email:$("#buyerEmail").value.trim(),phone:$("#buyerPhone").value.trim(),document:$("#buyerDocument").value.replace(/\D/g,""),plan:selectedPlan})});
   const data=await response.json().catch(()=>({}));if(!response.ok||!data.ok)throw new Error(data.error||"NÃ£o foi possÃ­vel gerar o Pix.");
   $("#checkoutForm").hidden=true;$("#pixResult").classList.add("show");$("#pixCode").value=data.pix.code||"";
   const img=$("#pixImage");if(data.pix.image){img.src=data.pix.image;img.hidden=false}else{img.hidden=true;img.removeAttribute("src")}
